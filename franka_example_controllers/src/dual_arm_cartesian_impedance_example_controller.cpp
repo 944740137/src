@@ -20,10 +20,8 @@
 
 namespace franka_example_controllers {
 
-bool DualArmCartesianImpedanceExampleController::initArm(
-    hardware_interface::RobotHW* robot_hw,
-    const std::string& arm_id,
-    const std::vector<std::string>& joint_names) {
+bool DualArmCartesianImpedanceExampleController::initArm(hardware_interface::RobotHW* robot_hw,const std::string& arm_id,const std::vector<std::string>& joint_names) 
+{
   FrankaDataContainer arm_data;
   auto* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
   if (model_interface == nullptr) {
@@ -90,8 +88,8 @@ bool DualArmCartesianImpedanceExampleController::initArm(
   return true;
 }
 
-bool DualArmCartesianImpedanceExampleController::init(hardware_interface::RobotHW* robot_hw,
-                                                      ros::NodeHandle& node_handle) {
+bool DualArmCartesianImpedanceExampleController::init(hardware_interface::RobotHW* robot_hw,ros::NodeHandle& node_handle) 
+{
   std::vector<double> cartesian_stiffness_vector;
   std::vector<double> cartesian_damping_vector;
 
@@ -174,7 +172,8 @@ bool DualArmCartesianImpedanceExampleController::init(hardware_interface::RobotH
   return left_success && right_success;
 }
 
-void DualArmCartesianImpedanceExampleController::startingArm(FrankaDataContainer& arm_data) {
+void DualArmCartesianImpedanceExampleController::startingArm(FrankaDataContainer& arm_data) 
+{
   // compute initial velocity with jacobian and set x_attractor and q_d_nullspace
   // to initial configuration
   franka::RobotState initial_state = arm_data.state_handle_->getRobotState();
@@ -197,7 +196,8 @@ void DualArmCartesianImpedanceExampleController::startingArm(FrankaDataContainer
   arm_data.q_d_nullspace_ = q_initial;
 }
 
-void DualArmCartesianImpedanceExampleController::starting(const ros::Time& /*time*/) {
+void DualArmCartesianImpedanceExampleController::starting(const ros::Time& /*time*/) 
+{
   for (auto& arm_data : arms_data_) {
     startingArm(arm_data.second);
   }
@@ -216,8 +216,8 @@ void DualArmCartesianImpedanceExampleController::starting(const ros::Time& /*tim
   EEl_T_C_.translation() = -0.5 * EEr_T_EEl_.inverse().rotation() * EEr_r_EEr_EEl;
 }
 
-void DualArmCartesianImpedanceExampleController::update(const ros::Time& /*time*/,
-                                                        const ros::Duration& /*period*/) {
+void DualArmCartesianImpedanceExampleController::update(const ros::Time& /*time*/,const ros::Duration& /*period*/) 
+{
   for (auto& arm_data : arms_data_) {
     updateArm(arm_data.second);  // NOLINT
   }
@@ -226,7 +226,8 @@ void DualArmCartesianImpedanceExampleController::update(const ros::Time& /*time*
   }
 }
 
-void DualArmCartesianImpedanceExampleController::updateArm(FrankaDataContainer& arm_data) {
+void DualArmCartesianImpedanceExampleController::updateArm(FrankaDataContainer& arm_data) 
+{
   // get state variables
   franka::RobotState robot_state = arm_data.state_handle_->getRobotState();
   std::array<double, 49> inertia_array = arm_data.model_handle_->getMass();
@@ -313,9 +314,8 @@ Eigen::Matrix<double, 7, 1> DualArmCartesianImpedanceExampleController::saturate
   return tau_d_saturated;
 }
 
-void DualArmCartesianImpedanceExampleController::complianceParamCallback(
-    franka_combined_example_controllers::dual_arm_compliance_paramConfig& config,
-    uint32_t /*level*/) {
+void DualArmCartesianImpedanceExampleController::complianceParamCallback(franka_combined_example_controllers::dual_arm_compliance_paramConfig& config,uint32_t /*level*/) 
+{
   auto& left_arm_data = arms_data_.at(left_arm_id_);
   left_arm_data.cartesian_stiffness_target_.setIdentity();
   left_arm_data.cartesian_stiffness_target_.topLeftCorner(3, 3)
@@ -393,7 +393,8 @@ void DualArmCartesianImpedanceExampleController::targetPoseCallback(
   }
 }
 
-void DualArmCartesianImpedanceExampleController::publishCenteringPose() {
+void DualArmCartesianImpedanceExampleController::publishCenteringPose() 
+{
   if (center_frame_pub_.trylock()) {
     franka::RobotState robot_state_left =
         arms_data_.at(left_arm_id_).state_handle_->getRobotState();

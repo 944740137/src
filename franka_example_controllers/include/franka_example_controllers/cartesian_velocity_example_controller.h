@@ -16,7 +16,8 @@ namespace franka_example_controllers {
 
 class CartesianVelocityExampleController : public controller_interface::MultiInterfaceController<
                                                franka_hw::FrankaVelocityCartesianInterface,
-                                               franka_hw::FrankaStateInterface> {
+                                               franka_hw::FrankaStateInterface> 
+{
  public:
   bool init(hardware_interface::RobotHW* robot_hardware, ros::NodeHandle& node_handle) override;
   void update(const ros::Time&, const ros::Duration& period) override;

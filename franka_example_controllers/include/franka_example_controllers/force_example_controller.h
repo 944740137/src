@@ -23,7 +23,8 @@ namespace franka_example_controllers {
 class ForceExampleController : public controller_interface::MultiInterfaceController<
                                    franka_hw::FrankaModelInterface,
                                    hardware_interface::EffortJointInterface,
-                                   franka_hw::FrankaStateInterface> {
+                                   franka_hw::FrankaStateInterface> 
+{
  public:
   bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle) override;
   void starting(const ros::Time&) override;
@@ -51,11 +52,9 @@ class ForceExampleController : public controller_interface::MultiInterfaceContro
   static constexpr double kDeltaTauMax{1.0};
 
   // Dynamic reconfigure
-  std::unique_ptr<dynamic_reconfigure::Server<franka_example_controllers::desired_mass_paramConfig>>
-      dynamic_server_desired_mass_param_;
+  std::unique_ptr<dynamic_reconfigure::Server<franka_example_controllers::desired_mass_paramConfig>>dynamic_server_desired_mass_param_;
   ros::NodeHandle dynamic_reconfigure_desired_mass_param_node_;
-  void desiredMassParamCallback(franka_example_controllers::desired_mass_paramConfig& config,
-                                uint32_t level);
+  void desiredMassParamCallback(franka_example_controllers::desired_mass_paramConfig& config,uint32_t level);
 };
 
 }  // namespace franka_example_controllers

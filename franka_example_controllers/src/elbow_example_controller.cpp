@@ -15,20 +15,21 @@
 
 namespace franka_example_controllers {
 
-bool ElbowExampleController::init(hardware_interface::RobotHW* robot_hardware,
-                                  ros::NodeHandle& node_handle) {
-  cartesian_pose_interface_ = robot_hardware->get<franka_hw::FrankaPoseCartesianInterface>();
-  if (cartesian_pose_interface_ == nullptr) {
-    ROS_ERROR("ElbowExampleController: Could not get Cartesian Pose interface from hardware");
-    return false;
-  }
-
+bool ElbowExampleController::init(hardware_interface::RobotHW* robot_hardware,ros::NodeHandle& node_handle) 
+{
+  //参数服务器
   std::string arm_id;
   if (!node_handle.getParam("arm_id", arm_id)) {
     ROS_ERROR("ElbowExampleController: Could not get parameter arm_id");
     return false;
   }
 
+  //给笛卡尔位姿指令并读取整个机器人状态类：实例化
+  cartesian_pose_interface_ = robot_hardware->get<franka_hw::FrankaPoseCartesianInterface>();
+  if (cartesian_pose_interface_ == nullptr) {
+    ROS_ERROR("ElbowExampleController: Could not get Cartesian Pose interface from hardware");
+    return false;
+  }
   try {
     cartesian_pose_handle_ = std::make_unique<franka_hw::FrankaCartesianPoseHandle>(
         cartesian_pose_interface_->getHandle(arm_id + "_robot"));
@@ -37,15 +38,14 @@ bool ElbowExampleController::init(hardware_interface::RobotHW* robot_hardware,
     return false;
   }
 
+  //机器人完整状态类：实例化
   auto state_interface = robot_hardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
     ROS_ERROR("ElbowExampleController: Could not get state interface from hardware");
     return false;
   }
-
   try {
     auto state_handle = state_interface->getHandle(arm_id + "_robot");
-
     std::array<double, 7> q_start{{0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4}};
     for (size_t i = 0; i < q_start.size(); i++) {
       if (std::abs(state_handle.getRobotState().q_d[i] - q_start[i]) > 0.1) {
@@ -64,13 +64,16 @@ bool ElbowExampleController::init(hardware_interface::RobotHW* robot_hardware,
   return true;
 }
 
-void ElbowExampleController::starting(const ros::Time& /* time */) {
+void ElbowExampleController::starting(const ros::Time& /* time */) 
+{
+  std::cout << "--------------start:ElbowExampleController_2.22--------------" << std::endl;
   initial_pose_ = cartesian_pose_handle_->getRobotState().O_T_EE_d;
   initial_elbow_ = cartesian_pose_handle_->getRobotState().elbow_d;
   elapsed_time_ = ros::Duration(0.0);
 }
 
-void ElbowExampleController::update(const ros::Time& /* time */, const ros::Duration& period) {
+void ElbowExampleController::update(const ros::Time& /* time */, const ros::Duration& period) 
+{
   elapsed_time_ += period;
 
   double angle = M_PI / 10.0 * (1.0 - std::cos(M_PI / 5.0 * elapsed_time_.toSec()));

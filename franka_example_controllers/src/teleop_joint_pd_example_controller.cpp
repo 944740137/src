@@ -22,8 +22,8 @@ const std::string kControllerName = "TeleopJointPDExampleController";
 
 namespace franka_example_controllers {
 
-bool TeleopJointPDExampleController::init(hardware_interface::RobotHW* robot_hw,
-                                          ros::NodeHandle& node_handle) {
+bool TeleopJointPDExampleController::init(hardware_interface::RobotHW* robot_hw,ros::NodeHandle& node_handle) 
+{
   std::string leader_arm_id;
   std::string follower_arm_id;
 
@@ -140,7 +140,8 @@ void TeleopJointPDExampleController::initArm(hardware_interface::RobotHW* robot_
                                              ros::NodeHandle& node_handle,
                                              FrankaDataContainer& arm_data,
                                              const std::string& arm_id,
-                                             const std::vector<std::string>& joint_names) {
+                                             const std::vector<std::string>& joint_names) 
+{
   auto* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
   if (not effort_joint_interface) {
     throw std::invalid_argument(kControllerName +
@@ -191,7 +192,8 @@ void TeleopJointPDExampleController::initArm(hardware_interface::RobotHW* robot_
       kPDZoneDamping, kDZoneDamping);
 }
 
-void TeleopJointPDExampleController::starting(const ros::Time& /*time*/) {
+void TeleopJointPDExampleController::starting(const ros::Time& /*time*/) 
+{
   // Reset joint walls to start from the current q, dq
   leader_data_.virtual_joint_wall->reset();
   follower_data_.virtual_joint_wall->reset();
@@ -212,8 +214,8 @@ void TeleopJointPDExampleController::starting(const ros::Time& /*time*/) {
   }
 }
 
-void TeleopJointPDExampleController::update(const ros::Time& /*time*/,
-                                            const ros::Duration& period) {
+void TeleopJointPDExampleController::update(const ros::Time& /*time*/,const ros::Duration& period) 
+{
   franka::RobotState leader_robot_state = leader_data_.state_handle->getRobotState();
   franka::RobotState follower_robot_state = follower_data_.state_handle->getRobotState();
   leader_data_.q = Eigen::Map<Vector7d>(leader_robot_state.q.data());
@@ -342,7 +344,8 @@ void TeleopJointPDExampleController::update(const ros::Time& /*time*/,
   }
 }
 
-void TeleopJointPDExampleController::updateArm(FrankaDataContainer& arm_data) {
+void TeleopJointPDExampleController::updateArm(FrankaDataContainer& arm_data) 
+{
   for (size_t i = 0; i < 7; ++i) {
     arm_data.joint_handles[i].setCommand(arm_data.tau_target[i]);
   }
@@ -352,7 +355,8 @@ Eigen::Matrix<double, 7, 1> TeleopJointPDExampleController::saturateAndLimit(con
                                                                              const Vector7d& x_last,
                                                                              const Vector7d& x_max,
                                                                              const Vector7d& dx_max,
-                                                                             const double delta_t) {
+                                                                             const double delta_t) 
+{
   Vector7d x_limited;
   for (size_t i = 0; i < 7; i++) {
     double delta_x_max = dx_max[i] * delta_t;
@@ -367,7 +371,8 @@ double TeleopJointPDExampleController::rampParameter(const double x,
                                                      const double neg_x_asymptote,
                                                      const double pos_x_asymptote,
                                                      const double shift_along_x,
-                                                     const double increase_factor) {
+                                                     const double increase_factor) 
+{
   double ramp =
       0.5 * (pos_x_asymptote + neg_x_asymptote -
              (pos_x_asymptote - neg_x_asymptote) * tanh(increase_factor * (x - shift_along_x)));
@@ -376,7 +381,8 @@ double TeleopJointPDExampleController::rampParameter(const double x,
 
 void TeleopJointPDExampleController::teleopParamCallback(
     franka_example_controllers::teleop_paramConfig& config,
-    uint32_t /*level*/) {
+    uint32_t /*level*/) 
+{
   if (dynamic_reconfigure_mutex_.try_lock()) {
     leader_damping_scaling_ = config.leader_damping_scaling;
     follower_stiffness_scaling_ = config.follower_stiffness_scaling;
@@ -425,7 +431,8 @@ void TeleopJointPDExampleController::teleopParamCallback(
 void TeleopJointPDExampleController::getJointLimits(ros::NodeHandle& nh,
                                                     const std::vector<std::string>& joint_names,
                                                     std::array<double, 7>& upper_joint_soft_limit,
-                                                    std::array<double, 7>& lower_joint_soft_limit) {
+                                                    std::array<double, 7>& lower_joint_soft_limit) 
+{
   const std::string& node_namespace = nh.getNamespace();
   std::size_t found = node_namespace.find_last_of('/');
   std::string parent_namespace = node_namespace.substr(0, found);
@@ -463,7 +470,8 @@ void TeleopJointPDExampleController::getJointLimits(ros::NodeHandle& nh,
   }
 }
 
-void TeleopJointPDExampleController::publishLeaderTarget() {
+void TeleopJointPDExampleController::publishLeaderTarget() 
+{
   if (leader_target_pub_.trylock()) {
     for (size_t i = 0; i < 7; ++i) {
       leader_target_pub_.msg_.name[i] = "panda_joint" + std::to_string(i + 1);
@@ -475,7 +483,8 @@ void TeleopJointPDExampleController::publishLeaderTarget() {
   }
 }
 
-void TeleopJointPDExampleController::publishFollowerTarget() {
+void TeleopJointPDExampleController::publishFollowerTarget() 
+{
   if (follower_target_pub_.trylock()) {
     for (size_t i = 0; i < 7; ++i) {
       follower_target_pub_.msg_.name[i] = "panda_joint" + std::to_string(i + 1);
@@ -487,27 +496,30 @@ void TeleopJointPDExampleController::publishFollowerTarget() {
   }
 }
 
-void TeleopJointPDExampleController::publishLeaderContact() {
+void TeleopJointPDExampleController::publishLeaderContact() 
+{
   if (leader_contact_pub_.trylock()) {
     leader_contact_pub_.msg_.data = leader_data_.contact;
     leader_contact_pub_.unlockAndPublish();
   }
 }
 
-void TeleopJointPDExampleController::publishFollowerContact() {
+void TeleopJointPDExampleController::publishFollowerContact() 
+{
   if (follower_contact_pub_.trylock()) {
     follower_contact_pub_.msg_.data = follower_data_.contact;
     follower_contact_pub_.unlockAndPublish();
   }
 }
 
-Vector7d TeleopJointPDExampleController::get7dParam(const std::string& param_name,
-                                                    ros::NodeHandle& nh) {
+Vector7d TeleopJointPDExampleController::get7dParam(const std::string& param_name,ros::NodeHandle& nh) 
+{
   auto buffer = getJointParams<double>(param_name, nh);
   return Vector7d(Eigen::Map<Vector7d>(buffer.data()));
 }
 
-Vector7d TeleopJointPDExampleController::leaderDamping(const Vector7d& dq) {
+Vector7d TeleopJointPDExampleController::leaderDamping(const Vector7d& dq) 
+{
   auto simple_ramp = [](const double min, const double max, const double value) -> double {
     if (value >= max) {
       return 1.0;
@@ -526,7 +538,8 @@ Vector7d TeleopJointPDExampleController::leaderDamping(const Vector7d& dq) {
   return damping;
 }
 
-void TeleopJointPDExampleController::publishMarkers() {
+void TeleopJointPDExampleController::publishMarkers() 
+{
   marker_pub_.lock();
   marker_pub_.unlockAndPublish();
 }

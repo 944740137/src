@@ -15,8 +15,16 @@
 
 namespace franka_example_controllers {
 
-bool CartesianPoseExampleController::init(hardware_interface::RobotHW* robot_hardware,
-                                          ros::NodeHandle& node_handle) {
+bool CartesianPoseExampleController::init(hardware_interface::RobotHW* robot_hardware,ros::NodeHandle& node_handle) 
+{
+  //参数服务器
+  std::string arm_id;
+  if (!node_handle.getParam("arm_id", arm_id)) {
+    ROS_ERROR("CartesianPoseExampleController: Could not get parameter arm_id");
+    return false;
+  }
+
+  //给笛卡尔位姿指令并读取整个机器人状态类：实例化
   cartesian_pose_interface_ = robot_hardware->get<franka_hw::FrankaPoseCartesianInterface>();
   if (cartesian_pose_interface_ == nullptr) {
     ROS_ERROR(
@@ -24,31 +32,22 @@ bool CartesianPoseExampleController::init(hardware_interface::RobotHW* robot_har
         "interface from hardware");
     return false;
   }
-
-  std::string arm_id;
-  if (!node_handle.getParam("arm_id", arm_id)) {
-    ROS_ERROR("CartesianPoseExampleController: Could not get parameter arm_id");
-    return false;
-  }
-
   try {
-    cartesian_pose_handle_ = std::make_unique<franka_hw::FrankaCartesianPoseHandle>(
-        cartesian_pose_interface_->getHandle(arm_id + "_robot"));
+    cartesian_pose_handle_ = std::make_unique<franka_hw::FrankaCartesianPoseHandle>(cartesian_pose_interface_->getHandle(arm_id + "_robot"));
   } catch (const hardware_interface::HardwareInterfaceException& e) {
-    ROS_ERROR_STREAM(
-        "CartesianPoseExampleController: Exception getting Cartesian handle: " << e.what());
+    ROS_ERROR_STREAM("CartesianPoseExampleController: Exception getting Cartesian handle: " << e.what());
     return false;
   }
-
+  
+  //机器人完整状态类：实例化
   auto state_interface = robot_hardware->get<franka_hw::FrankaStateInterface>();
   if (state_interface == nullptr) {
     ROS_ERROR("CartesianPoseExampleController: Could not get state interface from hardware");
     return false;
   }
-
   try {
     auto state_handle = state_interface->getHandle(arm_id + "_robot");
-
+    //判断机器人是否在初始位置
     std::array<double, 7> q_start{{0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4}};
     for (size_t i = 0; i < q_start.size(); i++) {
       if (std::abs(state_handle.getRobotState().q_d[i] - q_start[i]) > 0.1) {
@@ -60,23 +59,23 @@ bool CartesianPoseExampleController::init(hardware_interface::RobotHW* robot_har
       }
     }
   } catch (const hardware_interface::HardwareInterfaceException& e) {
-    ROS_ERROR_STREAM(
-        "CartesianPoseExampleController: Exception getting state handle: " << e.what());
+    ROS_ERROR_STREAM("CartesianPoseExampleController: Exception getting state handle: " << e.what());
     return false;
   }
-
   return true;
 }
 
-void CartesianPoseExampleController::starting(const ros::Time& /* time */) {
+void CartesianPoseExampleController::starting(const ros::Time& /* time */) 
+{
+  std::cout << "--------------start:CartesianPoseExampleController_2.22--------------" << std::endl;
+  //初始位置
   initial_pose_ = cartesian_pose_handle_->getRobotState().O_T_EE_d;
   elapsed_time_ = ros::Duration(0.0);
 }
 
-void CartesianPoseExampleController::update(const ros::Time& /* time */,
-                                            const ros::Duration& period) {
+void CartesianPoseExampleController::update(const ros::Time& /* time */,const ros::Duration& period) 
+{
   elapsed_time_ += period;
-
   double radius = 0.15;
   double angle = M_PI / 4 * (1 - std::cos(M_PI / 5.0 * elapsed_time_.toSec()));
   double delta_x = radius * std::sin(angle);

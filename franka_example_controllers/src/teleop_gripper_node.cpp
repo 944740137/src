@@ -32,7 +32,8 @@ using StopClient = actionlib::SimpleActionClient<StopAction>;
  * action is called and the follower gripper will grasp an object with a configurable force.
  * When opening the leader gripper, the follower gripper will also open.
  */
-class TeleopGripperClient {
+class TeleopGripperClient 
+{
  public:
   TeleopGripperClient()
       : leader_homing_client_("leader/homing", true),
@@ -125,7 +126,8 @@ class TeleopGripperClient {
     dynamic_reconfigure_mutex_.unlock();
   };
 
-  bool homingGripper() {
+  bool homingGripper() 
+  {
     if (follower_homing_client_.waitForServer(ros::Duration(2.0)) &&
         leader_homing_client_.waitForServer(ros::Duration(2.0))) {
       leader_homing_client_.sendGoal(franka_gripper::HomingGoal());
@@ -179,7 +181,8 @@ class TeleopGripperClient {
   }
 };
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) 
+{
   ros::init(argc, argv, "teleop_gripper_node");
   auto pnh = std::make_shared<ros::NodeHandle>("~");
   TeleopGripperClient teleop_gripper_client;

@@ -45,13 +45,38 @@
     </description>
   </class>
   <class name="franka_example_controllers/DualArmCartesianImpedanceExampleController" type="franka_example_controllers::DualArmCartesianImpedanceExampleController" base_class_type="controller_interface::ControllerBase">
-      <description>
+    <description>
           A controller that renders Cartesian impedance based tracking of separate target poses for 2 panda arms.
-      </description>
+    </description>
   </class>
   <class name="franka_example_controllers/TeleopJointPDExampleController" type="franka_example_controllers::TeleopJointPDExampleController" base_class_type="controller_interface::ControllerBase">
       <description>
           A PD controller that tracks position and velocity of the leader arm and applies it to the follower arm. It also applies force-feedback to the leader arm.
       </description>
+  </class>
+  <class name="franka_example_controllers/NullSpaceImpedanceController" type="franka_example_controllers::NullSpaceImpedanceController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          NullSpaceImpedanceController 位置控制,零空间阻抗
+    </description>
+  </class>
+  <class name="franka_example_controllers/NullSpaceImpedanceEBObserverController" type="franka_example_controllers::NullSpaceImpedanceEBObserverController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          NullSpaceImpedanceEBObserverController 位置姿态控制，零空间阻抗，基于误差(error based)的观测器
+    </description>
+  </class>
+    <class name="franka_example_controllers/NullSpaceImpedanceMBObserverController" type="franka_example_controllers::NullSpaceImpedanceMBObserverController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          NullSpaceImpedanceMBObserverController 位置姿态控制，零空间阻抗，基于动量(momentum based)的观测器
+    </description>
+  </class>
+      <class name="franka_example_controllers/JointDynamicControlController" type="franka_example_controllers::JointDynamicControlController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          JointDynamicControlController 关节空间动力学控制
+    </description>
+  </class>
+        <class name="franka_example_controllers/CartesianDynamicControlController" type="franka_example_controllers::CartesianDynamicControlController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          CartesianDynamicControlController 笛卡尔空间动力学控制
+    </description>
   </class>
 </library>

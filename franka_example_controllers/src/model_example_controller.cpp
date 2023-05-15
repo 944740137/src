@@ -17,7 +17,8 @@
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 
-namespace {
+namespace 
+{
 template <class T, size_t N>
 std::ostream& operator<<(std::ostream& ostream, const std::array<T, N>& array) {
   ostream << "[";
@@ -28,58 +29,59 @@ std::ostream& operator<<(std::ostream& ostream, const std::array<T, N>& array) {
 }
 }  // anonymous namespace
 
-namespace franka_example_controllers {
+namespace franka_example_controllers 
+{
 
-bool ModelExampleController::init(hardware_interface::RobotHW* robot_hw,
-                                  ros::NodeHandle& node_handle) {
-  franka_state_interface_ = robot_hw->get<franka_hw::FrankaStateInterface>();
-  if (franka_state_interface_ == nullptr) {
-    ROS_ERROR("ModelExampleController: Could not get Franka state interface from hardware");
-    return false;
-  }
+bool ModelExampleController::init(hardware_interface::RobotHW* robot_hw,ros::NodeHandle& node_handle) 
+{
   std::string arm_id;
   if (!node_handle.getParam("arm_id", arm_id)) {
     ROS_ERROR("ModelExampleController: Could not read parameter arm_id");
     return false;
   }
+
+  //运动学/动力学模型类：实例化
   model_interface_ = robot_hw->get<franka_hw::FrankaModelInterface>();
   if (model_interface_ == nullptr) {
     ROS_ERROR_STREAM("ModelExampleController: Error getting model interface from hardware");
     return false;
   }
-
   try {
-    franka_state_handle_ = std::make_unique<franka_hw::FrankaStateHandle>(
-        franka_state_interface_->getHandle(arm_id + "_robot"));
-  } catch (const hardware_interface::HardwareInterfaceException& ex) {
-    ROS_ERROR_STREAM(
-        "ModelExampleController: Exception getting franka state handle: " << ex.what());
-    return false;
-  }
-
-  try {
-    model_handle_ = std::make_unique<franka_hw::FrankaModelHandle>(
-        model_interface_->getHandle(arm_id + "_model"));
+    model_handle_ = std::make_unique<franka_hw::FrankaModelHandle>(model_interface_->getHandle(arm_id + "_model"));
   } catch (hardware_interface::HardwareInterfaceException& ex) {
-    ROS_ERROR_STREAM(
-        "ModelExampleController: Exception getting model handle from interface: " << ex.what());
+    ROS_ERROR_STREAM("ModelExampleController: Exception getting model handle from interface: " << ex.what());
     return false;
   }
+
+  //机器人完整状态类：实例化
+  franka_state_interface_ = robot_hw->get<franka_hw::FrankaStateInterface>();
+  if (franka_state_interface_ == nullptr) {
+    ROS_ERROR("ModelExampleController: Could not get Franka state interface from hardware");
+    return false;
+  }
+  try {
+    franka_state_handle_ = std::make_unique<franka_hw::FrankaStateHandle>(franka_state_interface_->getHandle(arm_id + "_robot"));
+  } catch (const hardware_interface::HardwareInterfaceException& ex) {
+    ROS_ERROR_STREAM("ModelExampleController: Exception getting franka state handle: " << ex.what());
+    return false;
+  }
+
   return true;
 }
 
-void ModelExampleController::update(const ros::Time& /*time*/, const ros::Duration& /*period*/) {
-  if (rate_trigger_()) {
+void ModelExampleController::update(const ros::Time& /*time*/, const ros::Duration& /*period*/) 
+{
+
+  if (rate_trigger_()) 
+  {
     std::array<double, 49> mass = model_handle_->getMass();
     std::array<double, 7> coriolis = model_handle_->getCoriolis();
     std::array<double, 7> gravity = model_handle_->getGravity();
     std::array<double, 16> pose = model_handle_->getPose(franka::Frame::kJoint4);
-    std::array<double, 42> joint4_body_jacobian =
-        model_handle_->getBodyJacobian(franka::Frame::kJoint4);
-    std::array<double, 42> endeffector_zero_jacobian =
-        model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
+    std::array<double, 42> joint4_body_jacobian = model_handle_->getBodyJacobian(franka::Frame::kJoint4);
+    std::array<double, 42> endeffector_zero_jacobian = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
 
-    ROS_INFO("--------------------------------------------------");
+    ROS_INFO("+--------------------------------------------------+");
     ROS_INFO_STREAM("mass :" << mass);
     ROS_INFO_STREAM("coriolis: " << coriolis);
     ROS_INFO_STREAM("gravity :" << gravity);

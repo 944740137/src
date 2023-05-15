@@ -30,7 +30,8 @@ JointWall::JointWall(const double soft_upper_joint_position_limit,
   D_zone_damping_ = positiveCheck(D_zone_damping);
 };
 
-double JointWall::computeTorque(const double q, const double dq) {
+double JointWall::computeTorque(const double q, const double dq) 
+{
   init(q, dq);
   adjustMovingWall(q, dq);
 
@@ -59,15 +60,18 @@ double JointWall::computeTorque(const double q, const double dq) {
   return torque;
 }
 
-void JointWall::reset() {
+void JointWall::reset() 
+{
   initialized_ = false;
 }
 
-bool JointWall::inRange(double low, double high, double x) {
+bool JointWall::inRange(double low, double high, double x) 
+{
   return (low <= x && x <= high);
 };
 
-void JointWall::init(const double q, const double dq) {
+void JointWall::init(const double q, const double dq) 
+{
   if (initialized_) {
     return;
   }
@@ -99,7 +103,8 @@ void JointWall::init(const double q, const double dq) {
   initialized_ = true;
 }
 
-void JointWall::adjustMovingWall(const double q, const double dq) {
+void JointWall::adjustMovingWall(const double q, const double dq) 
+{
   if (!moving_wall_) {
     return;
   }
@@ -123,7 +128,8 @@ void JointWall::adjustMovingWall(const double q, const double dq) {
   }
 }
 
-double JointWall::positiveCheck(double value) {
+double JointWall::positiveCheck(double value) 
+{
   if (value < 0) {
     ROS_WARN_THROTTLE(
         1, "JointWall expects positive parameters, but got negative. Using its absolute value.");
@@ -132,7 +138,8 @@ double JointWall::positiveCheck(double value) {
   return value;
 }
 
-JointWall::MotionInWall JointWall::getMotionInWall(const double q, const double dq) const {
+JointWall::MotionInWall JointWall::getMotionInWall(const double q, const double dq) const 
+{
   double D_zone_boundary_max =  // NOLINT (readability-identifier-naming)
       soft_upper_joint_position_limit_ - PD_zone_width_ - D_zone_width_;
   double D_zone_boundary_min =  // NOLINT (readability-identifier-naming)
