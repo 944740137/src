@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.4)
 
 #软件包名
-project(franka_example_controllers)
+project(main_controller)
 
 #设置变量
 set(CMAKE_BUILD_TYPE Release)
@@ -40,7 +40,6 @@ endif()
 
 #消息生成器
 add_message_files(FILES
-  JointTorqueComparison.msg
   paramForDebug.msg
 )
 #调用消息生成
@@ -48,19 +47,13 @@ generate_messages()
 
 #动态参数生成器,调用动态参数生成
 generate_dynamic_reconfigure_options(
-  cfg/compliance_param.cfg
-  cfg/desired_mass_param.cfg
-  cfg/dual_arm_compliance_param.cfg
-  cfg/teleop_param.cfg
-  cfg/teleop_gripper_param.cfg
-  cfg/nullspace_impedance_param.cfg
-  cfg/dynamic_control_param.cfg
+  cfg/main_controller.cfg
 )
 
 #指定包编译信息导出：它对依赖于此功能包的其他功能包来说具有重要作用
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES franka_example_controllers
+  LIBRARIES main_controller
   CATKIN_DEPENDS
     controller_interface
     dynamic_reconfigure
@@ -82,74 +75,40 @@ catkin_package(
 )
 
 #生成库
-add_library(franka_example_controllers
-  src/elbow_example_controller.cpp
-  src/cartesian_pose_example_controller.cpp
-  src/cartesian_velocity_example_controller.cpp
-  src/joint_position_example_controller.cpp
-  src/joint_velocity_example_controller.cpp
-  src/model_example_controller.cpp
-  src/joint_impedance_example_controller.cpp
-  src/cartesian_impedance_example_controller.cpp
-  src/force_example_controller.cpp
-  src/dual_arm_cartesian_impedance_example_controller.cpp
-  src/teleop_joint_pd_example_controller.cpp
-  src/joint_wall.cpp
-  src/nullspace_impedance_controller.cpp
-  src/dynamic_control_controller.cpp
-  src/pinocchino_interactive.cpp
+add_library(main_controller
+  src/main_controller.cpp
+  # src/myrobot.cpp
 )
 
 
-#定义目标文件（franka_example_controllers）依赖其他的目标文件，确保其他目标已被构建
-add_dependencies(franka_example_controllers
+#定义目标文件（main_controller）依赖其他的目标文件，确保其他目标已被构建
+add_dependencies(main_controller
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
   ${PROJECT_NAME}_generate_messages_cpp
   ${PROJECT_NAME}_gencpp
   ${PROJECT_NAME}_gencfg
 )
-#将目标文件（franka_example_controllers）与库文件进行链接
-target_link_libraries(franka_example_controllers PUBLIC
+#将目标文件（main_controller）与库文件进行链接
+target_link_libraries(main_controller PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
   franka_model
   pinocchio::pinocchio
 )
 # 添加头文件地址
-target_include_directories(franka_example_controllers SYSTEM PUBLIC
+target_include_directories(main_controller SYSTEM PUBLIC
   ${Franka_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
-target_include_directories(franka_example_controllers PUBLIC
+target_include_directories(main_controller PUBLIC
   include
 )
 
-# 生成可执行二进制文件
-add_executable(teleop_gripper_node
-  src/teleop_gripper_node.cpp
-)
-# 添加头文件地址
-target_include_directories(teleop_gripper_node PUBLIC
-  ${catkin_INCLUDE_DIRS}
-)
-#将目标文件（teleop_gripper_node）与库文件进行链接
-target_link_libraries(teleop_gripper_node PUBLIC
-  ${Franka_LIBRARIES}
-  ${catkin_LIBRARIES}
-)
-# 定义目标文件（teleop_gripper_node）依赖于其他目标文件，确保其他目标已被构建
-add_dependencies(teleop_gripper_node
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME}_generate_messages_cpp
-  ${PROJECT_NAME}_gencpp
-  ${PROJECT_NAME}_gencfg
-)
 
 ## Installation
-install(TARGETS franka_example_controllers
+install(TARGETS main_controller
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -163,13 +122,13 @@ install(DIRECTORY launch
 install(DIRECTORY config
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
-install(FILES franka_example_controllers_plugin.xml
+install(FILES main_controller_plugin.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
-catkin_install_python(
-  PROGRAMS scripts/interactive_marker.py scripts/move_to_start.py scripts/dual_arm_interactive_marker.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# catkin_install_python(
+#   PROGRAMS scripts/interactive_marker.py scripts/move_to_start.py scripts/dual_arm_interactive_marker.py
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
 ## Tools
 include(${CMAKE_CURRENT_LIST_DIR}/../cmake/ClangTools.cmake OPTIONAL
@@ -181,10 +140,10 @@ if(CLANG_TOOLS)
     ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
   )
-  add_format_target(franka_example_controllers FILES ${SOURCES} ${HEADERS})
-  add_tidy_target(franka_example_controllers
+  add_format_target(main_controller FILES ${SOURCES} ${HEADERS})
+  add_tidy_target(main_controller
     FILES ${SOURCES}
-    DEPENDS franka_example_controllers
+    DEPENDS main_controller
   )
 endif()
 

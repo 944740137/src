@@ -1,24 +1,23 @@
 // Copyright (c) 2017 Franka Emika GmbH
 // Use of this source code is governed by the Apache-2.0 license, see LICENSE
-
+#include <franka_example_controllers/pinocchino_interactive.h>
 #include <cmath>
 #include <memory>
 
 #include <controller_interface/controller_base.h>
 #include <franka/robot_state.h>
 #include <pluginlib/class_list_macros.h>
-#include <ros/ros.h>
+
 
 #include <franka_example_controllers/dynamic_control_controller.h>
 #include <franka_example_controllers/pseudo_inversion.h>
 
 #include <franka_example_controllers/franka_model.h>
 
-pinocchio::Model *pinModel;
-pinocchio::Data *pPinData;
+#include <ros/ros.h>
 
+extern pinLibInteractive *pinInteractive;
 namespace franka_example_controllers {
-
 
 bool JointDynamicControlController::init(hardware_interface::RobotHW* robot_hw,ros::NodeHandle& node_handle) 
 {
@@ -120,10 +119,8 @@ void JointDynamicControlController::starting(const ros::Time& /*time*/)
   q_initial = q_initial_;
   elapsed_time = ros::Duration(0.0);
 
-  std::string urdf = std::string("/home/wd/Ros_franka/catkin_franka_230512/src/test_pinocchio_pkg/urdf/panda/panda_withoutHand.urdf");
-  
-  // pinocchio::urdf::buildModel(urdf, pinModel);
-  // pinocchio::Data pPinData = pinocchio::Data(pinModel);
+  if (pinInteractive == nullptr)
+    pinInteractive = new pinLibInteractive();
 }
 void JointDynamicControlController::update(const ros::Time& /*time*/,const ros::Duration& t) 
 {
@@ -136,45 +133,83 @@ void JointDynamicControlController::update(const ros::Time& /*time*/,const ros::
     firstUpdate = false;
   }
 
-  //发布数据
-  franka_example_controllers::paramForDebug param_debug;
-
-  // 获取状态,C,M，q,dq的array类
-  franka::RobotState robot_state = state_handle_->getRobotState();
-  std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
-  std::array<double, 49> mass_array = model_handle_->getMass();
-
-  // 将array类转成矩阵
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> coriolisTerm(coriolis_array.data());
-  Eigen::Map<Eigen::Matrix<double, 7, 7>> inertiaMatrix1(mass_array.data());
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
-
-  // 获取外部库的M，C
-  Eigen::Matrix<double, 7, 7> inertiaMatrix2 = MassMatrix(q);
-  Eigen::Matrix<double, 7, 7> coriolisMatrix = CoriolisMatrix(q,dq);
-
-  //期望轨迹生成
+  // 期望轨迹生成
   elapsed_time += t;
   double delta_angle = M_PI / 8 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
-  double dot_delta_angle = M_PI / 8 * M_PI / 5 *(std::sin(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
-  double ddot_delta_angle = M_PI / 8 * M_PI / 5 * M_PI / 5 *(std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
-  for (size_t i = 0; i < 7; ++i) 
+  double dot_delta_angle = M_PI / 8 * M_PI / 5 * (std::sin(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
+  double ddot_delta_angle = M_PI / 8 * M_PI / 5 * M_PI / 5 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
+  for (size_t i = 0; i < 7; ++i)
   {
-    if (i == 4) 
+    if (i == 4)
     {
       q_d[i] = q_initial[i] - delta_angle;
-      dq_d[i] =  - dot_delta_angle;
+      dq_d[i] = -dot_delta_angle;
       ddq_d[i] = -ddot_delta_angle;
-    } 
-    else 
+    }
+    else
     {
       q_d[i] = q_initial[i] + delta_angle;
       dq_d[i] = dot_delta_angle;
       ddq_d[i] = ddot_delta_angle;
     }
   }
+
+  //发布数据
+  franka_example_controllers::paramForDebug param_debug;
+
+  // franka 获取状态,C,M，q,dq的array类
+  franka::RobotState robot_state = state_handle_->getRobotState();
+  std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
+  std::array<double, 49> mass_array = model_handle_->getMass();
+  std::array<double, 7> g_array = model_handle_->getGravity();
+  std::array<double, 42> jacobian_array = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
+  Eigen::Map<Eigen::Matrix<double, 6, 7>> J(jacobian_array.data());
+  Eigen::Map<Eigen::Matrix<double, 7, 1>> coriolisTerm(coriolis_array.data());
+  Eigen::Map<Eigen::Matrix<double, 7, 7>> inertiaMatrix1(mass_array.data());
+  Eigen::Map<Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
+  Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
+  Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
+  Eigen::Map<Eigen::Matrix<double, 7, 1>> G(g_array.data());
+
+  // franka_model 获取外部库的M，C
+  Eigen::Matrix<double, 7, 7> inertiaMatrix2 = MassMatrix(q);
+  Eigen::Matrix<double, 7, 7> coriolisMatrix = CoriolisMatrix(q,dq);
+
+  // pinocchino
+  pinocchio::Data data = pinInteractive->getpData();
+  pinocchio::Model model = pinInteractive->getpModel();
+
+  pinocchio::forwardKinematics(model, data, q);
+  pinocchio::updateFramePlacements(model, data);
+
+  pinocchio::computeJointJacobians(model, data, q);
+  Eigen::MatrixXd J_pin1 = data.J;
+  pinocchio::computeJointJacobiansTimeVariation(model, data, q, dq);
+  Eigen::MatrixXd dJ_pin = data.dJ;
+
+  Eigen::MatrixXd J_pin2 = pinocchio::computeJointJacobians(model, data);
+
+  Eigen::Matrix<double, 6, 7> J_pin3;
+  Eigen::Matrix<double, 6, 7> J_pin4;
+  // Eigen::Matrix<double, 6, 4> J1, J2, dJ;
+
+  pinocchio::JointIndex joint_id = (pinocchio::JointIndex)(model.njoints-2);
+
+  computeJointJacobian(model, data, q, joint_id, J_pin3);
+  pinocchio::getJointJacobian(model, data, joint_id, pinocchio::LOCAL_WORLD_ALIGNED, J_pin4);
+
+  pinocchio::rnea(model, data, q, dq, ddq_d);
+  Eigen::MatrixXd G_pin = pinocchio::computeGeneralizedGravity(model, data, q);
+  // Eigen::MatrixXd G_pin = data.g;
+  pinocchio::computeCoriolisMatrix(model, data, q, dq);
+  Eigen::MatrixXd C_pin = data.C;
+  pinocchio::getCoriolisMatrix(model, data);
+  Eigen::MatrixXd C_pin_ = data.C;
+
+  pinocchio::crba(model, data, q);
+  data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
+  Eigen::MatrixXd M_pin = data.M;
+
 
   // 误差计算
   Eigen::Matrix<double, 7, 1> error;
@@ -201,13 +236,43 @@ void JointDynamicControlController::update(const ros::Time& /*time*/,const ros::
   // tau_d << inertiaMatrix1 * (Kp * error + Kv * derror); /* + G */
 
   //debug
-  // time++;
-  // myfile << "" << std::endl;
-  // myfile << "time: " << time << "_" << std::endl;
-  // myfile << "M:"<< std::endl;
-  // myfile << inertiaMatrix1 - inertiaMatrix2 << std::endl;
-  // myfile << "C:" << std::endl;
-  // myfile << coriolisTerm - coriolisMatrix*dq << std::endl;
+  time++;
+  if(time%10 == 0)
+  {
+    myfile << "--------------------------------------------------------------" << std::endl;
+    myfile << "time: " << time << "_" << std::endl;
+    myfile << "q:" << std::endl;
+    myfile << q.transpose() << std::endl;
+    myfile << "franka:M:" << std::endl;
+    myfile << inertiaMatrix1 << std::endl;
+    myfile << "pinocchino:M_pin:" << std::endl;
+    myfile << M_pin << std::endl;
+    myfile << "franka:CTerm:" << std::endl;
+    myfile << coriolisTerm << std::endl;
+    myfile << "pinocchino:CTerm:" << std::endl;
+    myfile << C_pin * dq << std::endl;
+    myfile << "pinocchino:CTerm2:" << std::endl;
+    myfile << C_pin_ * dq << std::endl;
+    myfile << "franka:G:" << std::endl;
+    myfile << G << std::endl;
+    myfile << "pinocchino:G:" << std::endl;
+    myfile << G_pin << std::endl;
+    myfile << "franka:J:" << std::endl;
+    myfile << J << std::endl;
+    myfile << "pinocchino:J1:" << std::endl;
+    myfile << J_pin1  << std::endl;
+    myfile << "pinocchino:J2:" << std::endl;
+    myfile << J_pin2  << std::endl;
+    // myfile << "pinocchino:J3:" << std::endl;
+    // myfile << J_pin3 << std::endl;
+    myfile << "pinocchino:J4:" << std::endl;
+    myfile << J_pin4 << std::endl;
+    myfile << "pinocchino:C:" << std::endl;
+    myfile << C_pin << std::endl;
+    myfile << "pinocchino:C2:" << std::endl;
+    myfile << C_pin_ << std::endl;
+  }
+
 
   // 平滑命令
   tau_d << saturateTorqueRate(tau_d, tau_J_d);

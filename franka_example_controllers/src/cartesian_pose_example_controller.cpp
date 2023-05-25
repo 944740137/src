@@ -28,8 +28,7 @@ bool CartesianPoseExampleController::init(hardware_interface::RobotHW* robot_har
   cartesian_pose_interface_ = robot_hardware->get<franka_hw::FrankaPoseCartesianInterface>();
   if (cartesian_pose_interface_ == nullptr) {
     ROS_ERROR(
-        "CartesianPoseExampleController: Could not get Cartesian Pose "
-        "interface from hardware");
+        "CartesianPoseExampleController: Could not get Cartesian Pose ""interface from hardware");
     return false;
   }
   try {

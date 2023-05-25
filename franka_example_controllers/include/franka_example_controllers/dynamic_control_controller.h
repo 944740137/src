@@ -2,6 +2,8 @@
 // Use of this source code is governed by the Apache-2.0 license, see LICENSE
 #pragma once
 
+
+
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -23,12 +25,7 @@
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 
-#include "pinocchio/fwd.hpp"
-#include "pinocchio/parsers/urdf.hpp"
-#include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/algorithm/kinematics.hpp"
-#include "pinocchio/algorithm/jacobian.hpp"
-#include "pinocchio/algorithm/rnea.hpp"
+
 namespace franka_example_controllers {
 
 

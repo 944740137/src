@@ -1,0 +1,7 @@
+<library path="lib/libmain_controller">
+      <class name="main_controller/MainController" type="main_controller::MainController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          MainController 主控制器
+    </description>
+  </class>
+</library>
