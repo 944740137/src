@@ -2,8 +2,6 @@
 // Use of this source code is governed by the Apache-2.0 license, see LICENSE
 #pragma once
 
-
-
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -27,11 +25,7 @@
 
 namespace main_controller
 {
-  struct robotData
-  {
-      
-  };
-  
+
   // 关节空间的动力学控制
   class MainController : public controller_interface::MultiInterfaceController<
                              franka_hw::FrankaModelInterface,

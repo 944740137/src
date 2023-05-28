@@ -7,9 +7,9 @@
 #include <franka/robot_state.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <main_controller/main_controller.h>
+#include <rosController/main_controller.h>
 #include <algorithm/pseudo_inversion.h>
-
+// #include <controller/controller.h>
 #include <ros/ros.h>
 
 const char C_Date[12] = __DATE__;  
@@ -21,6 +21,7 @@ bool MainController::init(hardware_interface::RobotHW* robot_hw,ros::NodeHandle&
 {
   std::cout << "--------------init1:MainController--------------" << std::endl;
   std::cout << "--------------init2:MainController--------------" << std::endl;
+
   // 参数服务器
   std::string arm_id;
   if (!node_handle.getParam("arm_id", arm_id)) 
@@ -144,10 +145,6 @@ void MainController::update(const ros::Time& /*time*/,const ros::Duration& t)
   Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
   Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
 
-  // 获取外部库的M，C
-  // Eigen::Matrix<double, 7, 7> inertiaMatrix2 = MassMatrix(q);
-  // Eigen::Matrix<double, 7, 7> coriolisMatrix = CoriolisMatrix(q,dq);
-
   //期望轨迹生成
   elapsed_time += t;
   double delta_angle = M_PI / 8 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
@@ -183,24 +180,13 @@ void MainController::update(const ros::Time& /*time*/,const ros::Duration& t)
 
   // 命令加速度与输入力矩
   Eigen::VectorXd qc(7), tau_d(7);
-  // 纯PD控制----------------------------------------------------------------
-  // tau_d << Kp * error + Kv * derror; /* + G */
-  // 计算力矩 + PD-----------------------------------------------------------
   qc = ddq_d + Kp * error + Kv * derror;
   tau_d << inertiaMatrix1 * (qc) + coriolisTerm; /* + G */
-  // 反步控制----------------------------------------------------------------
-  // tau_d << inertiaMatrix2 * dr + coriolisMatrix * dr + K2 * error2 + K1 * derror; /* + G */
-  // 小练-------------------------------------------------------------------
-  // tau_d << inertiaMatrix1 * (Kp * error + Kv * derror); /* + G */
+
 
   //debug
   // time++;
   // myfile << "" << std::endl;
-  // myfile << "time: " << time << "_" << std::endl;
-  // myfile << "M:"<< std::endl;
-  // myfile << inertiaMatrix1 - inertiaMatrix2 << std::endl;
-  // myfile << "C:" << std::endl;
-  // myfile << coriolisTerm - coriolisMatrix*dq << std::endl;
 
   // 平滑命令
   tau_d << saturateTorqueRate(tau_d, tau_J_d);

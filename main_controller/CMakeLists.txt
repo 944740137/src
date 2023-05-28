@@ -77,6 +77,10 @@ catkin_package(
 #生成库
 add_library(main_controller
   src/rosController/main_controller.cpp
+  src/robot/myrobot.cpp
+  src/controllerLaw/controllerLaw.cpp
+  src/algorithm/pinocchino_interactive.cpp
+  src/controller/controller.cpp
   # src/myrobot.cpp
 )
 
@@ -101,10 +105,15 @@ target_include_directories(main_controller SYSTEM PUBLIC
   ${EIGEN3_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
+
 target_include_directories(main_controller PUBLIC
   include
+  ${PROJECT_SOURCE_DIR}/src
 )
-
+message(${Franka_INCLUDE_DIRS})
+message(${EIGEN3_INCLUDE_DIRS})
+message(${catkin_INCLUDE_DIRS})
+message(${PROJECT_SOURCE_DIR})
 ## Installation
 install(TARGETS main_controller
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
