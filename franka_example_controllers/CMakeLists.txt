@@ -9,6 +9,9 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(armadillo_include "/home/wd/lib/libarmadillo/include")
+set(armadillo_lib "/home/wd/lib/libarmadillo/libarmadillo.so")
+
 # 查找编译依赖的其他CMake/Catkin包
 find_package(catkin REQUIRED COMPONENTS
   controller_interface
@@ -91,6 +94,11 @@ add_library(franka_example_controllers
   src/nullspace_impedance_controller.cpp
   src/dynamic_control_controller.cpp
   src/pinocchino_interactive.cpp
+
+  src/GP.cpp
+  src/KernelFunction.cpp
+  src/MeanFunction.cpp
+  src/CGOptimizer.cpp
 )
 
 # 定义目标（franka_example_controllers）依赖其他的目标文件（库），确保其他目标先构建
@@ -106,6 +114,11 @@ target_link_libraries(franka_example_controllers PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
   pinocchio::pinocchio
+
+  ${armadillo_lib}
+  gsl
+  blas
+  lapack
 )
 # 添加头文件地址
 target_include_directories(franka_example_controllers SYSTEM PUBLIC
@@ -115,6 +128,7 @@ target_include_directories(franka_example_controllers SYSTEM PUBLIC
 )
 target_include_directories(franka_example_controllers PUBLIC
   include
+  ${armadillo_include}
 )
 
 ## Installation

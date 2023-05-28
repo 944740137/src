@@ -13,6 +13,8 @@
 
 #include <ros/ros.h>
 #include <time.h>
+
+#include "GP.h"
 extern pinLibInteractive *pinInteractive;
 namespace franka_example_controllers
 {
@@ -178,7 +180,7 @@ namespace franka_example_controllers
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
-    Eigen::Map<Eigen::Matrix<double, 7, 1>> G(g_array.data());
+    Eigen::Map<Eigen::Matrix<double, 7, 1>> G_(g_array.data());
 
     // pinocchino
     pinocchio::Data data = pinInteractive->getpData();
@@ -215,17 +217,58 @@ namespace franka_example_controllers
     data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
     Eigen::MatrixXd M_pin = data.M;
 
+    //GP
+    Col<REAL> kernel_param = "5.0 3.0";
+    SqExpKernel kernel(kernel_param);
+    ConstantMean mean("0,4,1");
+    GP gp(0.01, &kernel, &mean);
+
+    SqExpKernel kernel2(kernel_param);
+    ConstantMean mean2("0,2,3");
+    GP gp2(0.01, &kernel2, &mean2);
+
+    int Nstep = 2000;
+    Mat<REAL> Xtr;
+    Row<REAL> Ytr1;
+    Row<REAL> Ytr2;
+    Mat<REAL> Utr;
+    Col<REAL> X(4);
+    X(0) = 1; X(1) = 1; X(2) = 0.5; X(3) = 0.5;
+    REAL dt = 0.01;
+    REAL T = 0;
+    REAL hatf1, hatf2, hatg11, hatg12, hatg21, hatg22;
+
+    Col<REAL> r(2);
+    Col<REAL> rho(2);
+    Col<REAL> hatF(2);
+    Mat<REAL> hatG;
+    hatG.set_size(2, 2);
+    Col<REAL> u(2);
+    Col<REAL> obstacleBF(2);
+
+    Mat<REAL> H;
+    H.set_size(2, 2);
+    Mat<REAL> C;
+    C.set_size(2, 2);
+    Col<REAL> G(2);
+
+    Mat<REAL> allXtr(4, Nstep+1); allXtr(0, 0) = X(0); allXtr(1, 0) = X(1); allXtr(2, 0) = X(2); allXtr(3, 0) = X(3);
+    Mat<REAL> allT(1, Nstep+1); allT(0, 0) = T;
+    Mat<REAL> alltracking(2, Nstep+1); alltracking(0, 0) = sin(T); alltracking(1, 0) = cos(T);
+    Row<REAL> allhatf(1, Nstep);
+    Row<REAL> allhatg(1, Nstep);
+
     // 误差计算
     Eigen::Matrix<double, 7, 1> error;
     Eigen::Matrix<double, 7, 1> derror;
-    Eigen::Matrix<double, 7, 1> r;
+    // Eigen::Matrix<double, 7, 1> r;
     Eigen::Matrix<double, 7, 1> dr;
     Eigen::Matrix<double, 7, 1> error2;
     error = q_d - q;
     derror = dq_d - dq;
     error2 = derror + K1 * error;
-    r = dq_d + K1 * error;
-    dr = ddq_d + K1 * derror;
+    // r = dq_d + K1 * error;
+    // dr = ddq_d + K1 * derror;
 
     // 命令加速度与输入力矩
     Eigen::VectorXd qc(7), tau_d(7);
@@ -241,7 +284,7 @@ namespace franka_example_controllers
 
     // debug
     time++;
-    if (time % 10 == 0)
+    if (time % 10000 == 0)
     {
       myfile << "--------------------------------------------------------------" << std::endl;
       myfile << "time: " << time << "_" << std::endl;
