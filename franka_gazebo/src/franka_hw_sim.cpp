@@ -2,7 +2,7 @@
 #include <controller_manager_msgs/ListControllers.h>
 #include <controller_manager_msgs/SwitchController.h>
 #include <franka/duration.h>
-#include <franka_example_controllers/pseudo_inversion.h>
+#include <algorithm/pseudo_inversion.h>
 #include <franka_gazebo/franka_hw_sim.h>
 #include <franka_gazebo/model_kdl.h>
 #include <franka_hw/franka_hw.h>

@@ -1,15 +1,15 @@
-#cmake版本
+# cmake版本
 cmake_minimum_required(VERSION 3.4)
 
-#软件包名
+# 软件包名
 project(franka_example_controllers)
 
-#设置变量
+# 设置变量
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-#查找编译依赖的其他CMake/Catkin包
+# 查找编译依赖的其他CMake/Catkin包
 find_package(catkin REQUIRED COMPONENTS
   controller_interface
   dynamic_reconfigure
@@ -30,7 +30,7 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
 )
 
-#查找编译依赖的库
+# 查找编译依赖的库（库需要有findcmake）
 find_package(pinocchio REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.9.0 QUIET)
@@ -38,26 +38,23 @@ if(NOT Franka_FOUND)
   find_package(Franka 0.8.0 REQUIRED)
 endif()
 
-#消息生成器
+# 消息生成器
 add_message_files(FILES
   JointTorqueComparison.msg
   paramForDebug.msg
 )
-#调用消息生成
+# 调用消息生成
 generate_messages()
 
-#动态参数生成器,调用动态参数生成
+# 动态参数生成器,调用动态参数生成
 generate_dynamic_reconfigure_options(
   cfg/compliance_param.cfg
   cfg/desired_mass_param.cfg
-  cfg/dual_arm_compliance_param.cfg
-  cfg/teleop_param.cfg
-  cfg/teleop_gripper_param.cfg
   cfg/nullspace_impedance_param.cfg
   cfg/dynamic_control_param.cfg
 )
 
-#指定包编译信息导出：它对依赖于此功能包的其他功能包来说具有重要作用
+# 指定包编译信息导出：它对依赖于此功能包的其他功能包来说具有重要作用
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES franka_example_controllers
@@ -81,7 +78,7 @@ catkin_package(
   DEPENDS Franka
 )
 
-#生成库
+# 构建库
 add_library(franka_example_controllers
   src/elbow_example_controller.cpp
   src/cartesian_pose_example_controller.cpp
@@ -91,17 +88,12 @@ add_library(franka_example_controllers
   src/model_example_controller.cpp
   src/joint_impedance_example_controller.cpp
   src/cartesian_impedance_example_controller.cpp
-  src/force_example_controller.cpp
-  src/dual_arm_cartesian_impedance_example_controller.cpp
-  src/teleop_joint_pd_example_controller.cpp
-  src/joint_wall.cpp
   src/nullspace_impedance_controller.cpp
   src/dynamic_control_controller.cpp
   src/pinocchino_interactive.cpp
 )
 
-
-#定义目标文件（franka_example_controllers）依赖其他的目标文件，确保其他目标已被构建
+# 定义目标（franka_example_controllers）依赖其他的目标文件（库），确保其他目标先构建
 add_dependencies(franka_example_controllers
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
@@ -109,11 +101,10 @@ add_dependencies(franka_example_controllers
   ${PROJECT_NAME}_gencpp
   ${PROJECT_NAME}_gencfg
 )
-#将目标文件（franka_example_controllers）与库文件进行链接
+# 将目标文件（franka_example_controllers）与库文件进行链接
 target_link_libraries(franka_example_controllers PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
-  franka_model
   pinocchio::pinocchio
 )
 # 添加头文件地址
@@ -124,28 +115,6 @@ target_include_directories(franka_example_controllers SYSTEM PUBLIC
 )
 target_include_directories(franka_example_controllers PUBLIC
   include
-)
-
-# 生成可执行二进制文件
-add_executable(teleop_gripper_node
-  src/teleop_gripper_node.cpp
-)
-# 添加头文件地址
-target_include_directories(teleop_gripper_node PUBLIC
-  ${catkin_INCLUDE_DIRS}
-)
-#将目标文件（teleop_gripper_node）与库文件进行链接
-target_link_libraries(teleop_gripper_node PUBLIC
-  ${Franka_LIBRARIES}
-  ${catkin_LIBRARIES}
-)
-# 定义目标文件（teleop_gripper_node）依赖于其他目标文件，确保其他目标已被构建
-add_dependencies(teleop_gripper_node
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-  ${PROJECT_NAME}_generate_messages_cpp
-  ${PROJECT_NAME}_gencpp
-  ${PROJECT_NAME}_gencfg
 )
 
 ## Installation

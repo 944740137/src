@@ -76,7 +76,7 @@ catkin_package(
 
 #生成库
 add_library(main_controller
-  src/main_controller.cpp
+  src/rosController/main_controller.cpp
   # src/myrobot.cpp
 )
 
@@ -93,7 +93,6 @@ add_dependencies(main_controller
 target_link_libraries(main_controller PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
-  franka_model
   pinocchio::pinocchio
 )
 # 添加头文件地址
@@ -105,7 +104,6 @@ target_include_directories(main_controller SYSTEM PUBLIC
 target_include_directories(main_controller PUBLIC
   include
 )
-
 
 ## Installation
 install(TARGETS main_controller

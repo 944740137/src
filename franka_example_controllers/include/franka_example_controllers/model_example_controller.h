@@ -14,21 +14,23 @@
 #include <franka_hw/franka_state_interface.h>
 #include <franka_hw/trigger_rate.h>
 
-namespace franka_example_controllers {
+namespace franka_example_controllers
+{
 
-class ModelExampleController
-    : public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,
-                                                            franka_hw::FrankaStateInterface> {
- public:
-  bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle) override;
-  void update(const ros::Time&, const ros::Duration&) override;
+  class ModelExampleController
+      : public controller_interface::MultiInterfaceController<franka_hw::FrankaModelInterface,
+                                                              franka_hw::FrankaStateInterface>
+  {
+  public:
+    bool init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle) override;
+    void update(const ros::Time &, const ros::Duration &) override;
 
- private:
-  franka_hw::FrankaStateInterface* franka_state_interface_;
-  std::unique_ptr<franka_hw::FrankaStateHandle> franka_state_handle_;
-  franka_hw::FrankaModelInterface* model_interface_;
-  std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
-  franka_hw::TriggerRate rate_trigger_{1.0};
-};
+  private:
+    franka_hw::FrankaStateInterface *franka_state_interface_;
+    std::unique_ptr<franka_hw::FrankaStateHandle> franka_state_handle_;
+    franka_hw::FrankaModelInterface *model_interface_;
+    std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;
+    franka_hw::TriggerRate rate_trigger_{1.0};
+  };
 
-}  // namespace franka_example_controllers
+} // namespace franka_example_controllers

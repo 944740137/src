@@ -8,18 +8,19 @@
 #include <pluginlib/class_list_macros.h>
 
 #include <main_controller/main_controller.h>
-#include <main_controller/pseudo_inversion.h>
-
-#include <main_controller/franka_model.h>
+#include <algorithm/pseudo_inversion.h>
 
 #include <ros/ros.h>
+
+const char C_Date[12] = __DATE__;  
+const char C_Time[9] = __TIME__;
 
 namespace main_controller {
 
 bool MainController::init(hardware_interface::RobotHW* robot_hw,ros::NodeHandle& node_handle) 
 {
-  std::cout << "--------------init1:MainController_4.28--------------" << std::endl;
-  std::cout << "--------------init2:MainController_4.28--------------" << std::endl;
+  std::cout << "--------------init1:MainController--------------" << std::endl;
+  std::cout << "--------------init2:MainController--------------" << std::endl;
   // 参数服务器
   std::string arm_id;
   if (!node_handle.getParam("arm_id", arm_id)) 
@@ -91,9 +92,9 @@ bool MainController::init(hardware_interface::RobotHW* robot_hw,ros::NodeHandle&
 }
 void MainController::starting(const ros::Time& /*time*/) 
 {
-  std::cout << "--------------start1:MainController_4.28--------------"<< std::endl;
-  std::cout << "--------------start2:MainController_4.28--------------" << std::endl;
-
+  std::cout << "--------------start1:MainController--------------"<< std::endl;
+  std::cout << "--------------start2:MainController--------------" << std::endl;
+  std::cout << "------------"<< C_Date << C_Time <<"------------" << std::endl;
   // 获取机器人初始状态
   franka::RobotState initial_state = state_handle_->getRobotState();
   // 获取当前关节位置
@@ -144,8 +145,8 @@ void MainController::update(const ros::Time& /*time*/,const ros::Duration& t)
   Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
 
   // 获取外部库的M，C
-  Eigen::Matrix<double, 7, 7> inertiaMatrix2 = MassMatrix(q);
-  Eigen::Matrix<double, 7, 7> coriolisMatrix = CoriolisMatrix(q,dq);
+  // Eigen::Matrix<double, 7, 7> inertiaMatrix2 = MassMatrix(q);
+  // Eigen::Matrix<double, 7, 7> coriolisMatrix = CoriolisMatrix(q,dq);
 
   //期望轨迹生成
   elapsed_time += t;
