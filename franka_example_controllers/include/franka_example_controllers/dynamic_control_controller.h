@@ -22,7 +22,7 @@
 #include <franka_example_controllers/paramForDebug.h>
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
-
+#include "GP.h"
 namespace franka_example_controllers
 {
 
@@ -68,6 +68,9 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> ddq_d;
     Eigen::Matrix<double, 7, 1> q_initial;
 
+    //old ddq
+    Eigen::Matrix<double, 7, 1>dq_old;
+    Eigen::Matrix<double, 7, 1>ddq;
     // 动态配置参数
     std::unique_ptr<dynamic_reconfigure::Server<franka_example_controllers::dynamic_control_paramConfig>> dynamic_server_compliance_param_;
     ros::NodeHandle dynamic_reconfigure_compliance_param_node_;
@@ -85,6 +88,14 @@ namespace franka_example_controllers
     // pinocchioLib lib_;
     // pinocchio::Model pinModel;
     // pinocchio::Data pPinData;
+
+
+    //GP
+    Mat<REAL> Xtr;
+    Row<REAL> Ytr1;
+    Row<REAL> Ytr2;
+    Mat<REAL> Utr;
+
   };
 
   // 笛卡尔空间的动力学控制

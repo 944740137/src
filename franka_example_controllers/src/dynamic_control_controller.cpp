@@ -14,7 +14,9 @@
 #include <ros/ros.h>
 #include <time.h>
 
-#include "GP.h"
+const char C_Date[12] = __DATE__;  
+const char C_Time[9] = __TIME__;
+
 extern pinLibInteractive *pinInteractive;
 namespace franka_example_controllers
 {
@@ -106,7 +108,7 @@ namespace franka_example_controllers
   {
     std::cout << "--------------start1:JointDynamicControlController--------------" << std::endl;
     std::cout << "--------------start2:JointDynamicControlController--------------" << std::endl;
-    
+    std::cout << "---------------"<< C_Date <<"_"<< C_Time <<"---------------" << std::endl;
     // 获取机器人初始状态
     franka::RobotState initial_state = state_handle_->getRobotState();
     // 获取当前关节位置
@@ -123,9 +125,11 @@ namespace franka_example_controllers
     K2.setIdentity();
     K2 = tmp * Eigen::MatrixXd::Identity(7, 7);
 
-    q_d.setZero();
+    // q_d.setZero();
     dq_d.setZero();
     ddq_d.setZero();
+    dq_old.setZero();
+    ddq.setZero();
     q_initial = q_initial_;
     elapsed_time = ros::Duration(0.0);
 
@@ -141,7 +145,7 @@ namespace franka_example_controllers
       myfile.open("/home/wd/JointDynamicControlController.txt");
       myfile << "JointDynamicControlController\n"
              << std::endl;
-      firstUpdate = false;
+      // firstUpdate = false;
     }
 
     // 期望轨迹生成
@@ -151,18 +155,28 @@ namespace franka_example_controllers
     double ddot_delta_angle = M_PI / 8 * M_PI / 5 * M_PI / 5 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
     for (size_t i = 0; i < 7; ++i)
     {
-      if (i == 4)
-      {
-        q_d[i] = q_initial[i] - delta_angle;
-        dq_d[i] = -dot_delta_angle;
-        ddq_d[i] = -ddot_delta_angle;
-      }
-      else
+      // if (i == 4)
+      // {
+      //   q_d[i] = q_initial[i] - delta_angle;
+      //   dq_d[i] = -dot_delta_angle;
+      //   ddq_d[i] = -ddot_delta_angle;
+      // }
+      // else
+      // {
+      //   q_d[i] = q_initial[i] + delta_angle;
+      //   dq_d[i] = dot_delta_angle;
+      //   ddq_d[i] = ddot_delta_angle;
+      // }
+      q_d[i] = q_initial[i];
+      dq_d[i] = 0;
+      ddq_d[i] = 0;
+      if (i == 0 || i == 1)
       {
         q_d[i] = q_initial[i] + delta_angle;
         dq_d[i] = dot_delta_angle;
         ddq_d[i] = ddot_delta_angle;
       }
+
     }
 
     // 发布数据
@@ -181,6 +195,19 @@ namespace franka_example_controllers
     Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> G_(g_array.data());
+
+    // ddq
+    if (firstUpdate)
+    {
+      ddq.setZero();
+      dq_old.setZero();
+      firstUpdate = false;
+    }
+    else
+    {
+      ddq = (dq - dq_old)/t.toSec();
+      dq_old = dq;
+    }
 
     // pinocchino
     pinocchio::Data data = pinInteractive->getpData();
@@ -217,7 +244,10 @@ namespace franka_example_controllers
     data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
     Eigen::MatrixXd M_pin = data.M;
 
-    //GP
+    // GP
+    Ytr1 = ddq(0);
+    Ytr2 = ddq(1);
+
     Col<REAL> kernel_param = "5.0 3.0";
     SqExpKernel kernel(kernel_param);
     ConstantMean mean("0,4,1");
@@ -227,15 +257,6 @@ namespace franka_example_controllers
     ConstantMean mean2("0,2,3");
     GP gp2(0.01, &kernel2, &mean2);
 
-    int Nstep = 2000;
-    Mat<REAL> Xtr;
-    Row<REAL> Ytr1;
-    Row<REAL> Ytr2;
-    Mat<REAL> Utr;
-    Col<REAL> X(4);
-    X(0) = 1; X(1) = 1; X(2) = 0.5; X(3) = 0.5;
-    REAL dt = 0.01;
-    REAL T = 0;
     REAL hatf1, hatf2, hatg11, hatg12, hatg21, hatg22;
 
     Col<REAL> r(2);
@@ -245,18 +266,64 @@ namespace franka_example_controllers
     hatG.set_size(2, 2);
     Col<REAL> u(2);
     Col<REAL> obstacleBF(2);
+    Col<REAL> X(4);
+    X(0) = q(0);
+    X(1) = q(1);
+    X(2) = dq(0);
+    X(3) = dq(1);
+    if (Xtr.is_empty())
+    {
+      hatf1 = 0;
+      hatf2 = 0;
+      hatg11 = 4;
+      hatg12 = 1;
+      hatg21 = 2;
+      hatg22 = 3;
+      Xtr.set_size(4, 1);
+      Ytr1.set_size(1);
+      Ytr2.set_size(1);
+      Utr.set_size(3, 1);
+    }
+    else
+    {
+      gp.AddTraining(Xtr, Ytr1, Utr);
+      gp.Predict(X, hatf1, hatg11, hatg12);
 
-    Mat<REAL> H;
-    H.set_size(2, 2);
-    Mat<REAL> C;
-    C.set_size(2, 2);
-    Col<REAL> G(2);
+      gp2.AddTraining(Xtr, Ytr2, Utr);
+      gp2.Predict(X, hatf2, hatg21, hatg22);
+    }
 
-    Mat<REAL> allXtr(4, Nstep+1); allXtr(0, 0) = X(0); allXtr(1, 0) = X(1); allXtr(2, 0) = X(2); allXtr(3, 0) = X(3);
-    Mat<REAL> allT(1, Nstep+1); allT(0, 0) = T;
-    Mat<REAL> alltracking(2, Nstep+1); alltracking(0, 0) = sin(T); alltracking(1, 0) = cos(T);
-    Row<REAL> allhatf(1, Nstep);
-    Row<REAL> allhatg(1, Nstep);
+    REAL e1 = q(0) - q_d(0);
+    REAL e2 = q(1) - q_d(1);
+    REAL e3 = dq(2) - dq_d(0);
+    REAL e4 = dq(3) - dq_d(1);
+
+    r(0) = e1 + e3;
+    r(1) = e2 + e4;
+    rho(0) = e3 + q_d(0);
+    rho(1) = e4 + q_d(1);
+
+    Col<REAL> nu = -r - rho;
+
+    hatF(0) = hatf1;
+    hatF(1) = hatf2;
+    hatG(0, 0) = hatg11;
+    hatG(0, 1) = hatg12;
+    hatG(1, 0) = hatg21;
+    hatG(1, 1) = hatg22;
+
+    obstacleBF(0) = r(0) / (25 - r(0) * r(0));
+    obstacleBF(1) = r(1) / (25 - r(1) * r(1));
+    u = inv(hatG) * (-hatF + nu) - obstacleBF;
+
+    Xtr(0, 0) = q(0);
+    Xtr(1, 0) = q(1);
+    Xtr(2, 0) = dq(0);
+    Xtr(3, 0) = dq(1);
+
+    Utr(0, 0) = 1;
+    Utr(1, 0) = u(0);
+    Utr(2, 0) = u(1);
 
     // 误差计算
     Eigen::Matrix<double, 7, 1> error;
@@ -284,10 +351,12 @@ namespace franka_example_controllers
 
     // debug
     time++;
-    if (time % 10000 == 0)
+    if (time % 1 == 0)
     {
       myfile << "--------------------------------------------------------------" << std::endl;
       myfile << "time: " << time << "_" << std::endl;
+      myfile << "q_d:" << std::endl;
+      myfile << q_d.transpose() << std::endl;
       myfile << "q:" << std::endl;
       myfile << q.transpose() << std::endl;
       myfile << "franka:M:" << std::endl;
@@ -300,8 +369,8 @@ namespace franka_example_controllers
       myfile << C_pin * dq << std::endl;
       myfile << "pinocchino:CTerm2:" << std::endl;
       myfile << C_pin_ * dq << std::endl;
-      myfile << "franka:G:" << std::endl;
-      myfile << G << std::endl;
+      // myfile << "franka:G:" << std::endl;
+      // myfile << G << std::endl;
       myfile << "pinocchino:G:" << std::endl;
       myfile << G_pin << std::endl;
       myfile << "franka:J:" << std::endl;
