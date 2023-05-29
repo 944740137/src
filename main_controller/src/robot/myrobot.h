@@ -8,7 +8,6 @@ namespace my_robot
     template <int _Dofs = 7>
     class Robot
     {
-        friend class ControllerLawBase;
 
     private:
         Eigen::Matrix<double, _Dofs, 1> q;
