@@ -14,9 +14,10 @@
 #include <ros/ros.h>
 #include <time.h>
 
-const char C_Date[12] = __DATE__;  
+const char C_Date[12] = __DATE__;
 const char C_Time[9] = __TIME__;
-
+Col<REAL> myu(2);
+Eigen::VectorXd qc(7), tau_d(7);
 extern pinLibInteractive *pinInteractive;
 namespace franka_example_controllers
 {
@@ -106,9 +107,9 @@ namespace franka_example_controllers
   }
   void JointDynamicControlController::starting(const ros::Time & /*time*/)
   {
-    std::cout << "--------------start1:JointDynamicControlController--------------" << std::endl;
-    std::cout << "--------------start2:JointDynamicControlController--------------" << std::endl;
-    std::cout << "---------------"<< C_Date <<"_"<< C_Time <<"---------------" << std::endl;
+    std::cout << "--------------start1:JointDynamicControlController GP--------------" << std::endl;
+    std::cout << "--------------start2:JointDynamicControlController GP--------------" << std::endl;
+    std::cout << "---------------" << C_Date << "_" << C_Time << "---------------" << std::endl;
     // 获取机器人初始状态
     franka::RobotState initial_state = state_handle_->getRobotState();
     // 获取当前关节位置
@@ -150,9 +151,9 @@ namespace franka_example_controllers
 
     // 期望轨迹生成
     elapsed_time += t;
-    double delta_angle = M_PI / 8 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
-    double dot_delta_angle = M_PI / 8 * M_PI / 5 * (std::sin(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
-    double ddot_delta_angle = M_PI / 8 * M_PI / 5 * M_PI / 5 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
+    double delta_angle = M_PI / 8 * (1 - std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.2;
+    double dot_delta_angle = -M_PI / 8 * M_PI / 6 * (std::cos(M_PI / 6.0 * elapsed_time.toSec())) * 0.2;
+    double ddot_delta_angle = M_PI / 8 * M_PI / 6 * M_PI / 6 * (std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.2;
     for (size_t i = 0; i < 7; ++i)
     {
       // if (i == 4)
@@ -170,13 +171,12 @@ namespace franka_example_controllers
       q_d[i] = q_initial[i];
       dq_d[i] = 0;
       ddq_d[i] = 0;
-      if (i == 0 || i == 1)
+      if (i == 5 || i == 6) // wd
       {
         q_d[i] = q_initial[i] + delta_angle;
         dq_d[i] = dot_delta_angle;
         ddq_d[i] = ddot_delta_angle;
       }
-
     }
 
     // 发布数据
@@ -199,13 +199,15 @@ namespace franka_example_controllers
     // ddq
     if (firstUpdate)
     {
+      tau_d.setZero();
+      qc.setZero();
       ddq.setZero();
       dq_old.setZero();
       firstUpdate = false;
     }
     else
     {
-      ddq = (dq - dq_old)/t.toSec();
+      ddq = (dq - dq_old) / t.toSec();
       dq_old = dq;
     }
 
@@ -245,85 +247,90 @@ namespace franka_example_controllers
     Eigen::MatrixXd M_pin = data.M;
 
     // GP
-    Ytr1 = ddq(0);
-    Ytr2 = ddq(1);
-
-    Col<REAL> kernel_param = "5.0 3.0";
-    SqExpKernel kernel(kernel_param);
-    ConstantMean mean("0,4,1");
-    GP gp(0.01, &kernel, &mean);
-
-    SqExpKernel kernel2(kernel_param);
-    ConstantMean mean2("0,2,3");
-    GP gp2(0.01, &kernel2, &mean2);
-
-    REAL hatf1, hatf2, hatg11, hatg12, hatg21, hatg22;
-
-    Col<REAL> r(2);
-    Col<REAL> rho(2);
-    Col<REAL> hatF(2);
-    Mat<REAL> hatG;
-    hatG.set_size(2, 2);
-    Col<REAL> u(2);
-    Col<REAL> obstacleBF(2);
-    Col<REAL> X(4);
-    X(0) = q(0);
-    X(1) = q(1);
-    X(2) = dq(0);
-    X(3) = dq(1);
-    if (Xtr.is_empty())
+    if (time % 10 == 0 || time == 1)
     {
-      hatf1 = 0;
-      hatf2 = 0;
-      hatg11 = 4;
-      hatg12 = 1;
-      hatg21 = 2;
-      hatg22 = 3;
-      Xtr.set_size(4, 1);
-      Ytr1.set_size(1);
-      Ytr2.set_size(1);
-      Utr.set_size(3, 1);
+      Ytr1 = ddq(5); // wd
+      Ytr2 = ddq(6);
+
+      Col<REAL> kernel_param = "5.0 3.0";
+      SqExpKernel kernel(kernel_param);
+      ConstantMean mean("0,4,1");
+      GP gp(0.01, &kernel, &mean);
+
+      SqExpKernel kernel2(kernel_param);
+      ConstantMean mean2("0,2,3");
+      GP gp2(0.01, &kernel2, &mean2);
+
+      REAL hatf1, hatf2, hatg11, hatg12, hatg21, hatg22;
+
+      Col<REAL> r(2);
+      Col<REAL> rho(2);
+      Col<REAL> hatF(2);
+      Mat<REAL> hatG;
+      hatG.set_size(2, 2);
+      Col<REAL> u(2);
+      Col<REAL> obstacleBF(2);
+      Col<REAL> X(4);
+      X(0) = q(5); // wd
+      X(1) = q(6);
+      X(2) = dq(5);
+      X(3) = dq(6);
+      if (Xtr.is_empty())
+      {
+        hatf1 = 0;
+        hatf2 = 0;
+        hatg11 = 4;
+        hatg12 = 1;
+        hatg21 = 2;
+        hatg22 = 3;
+        Xtr.set_size(4, 1);
+        Ytr1.set_size(1);
+        Ytr2.set_size(1);
+        Utr.set_size(3, 1);
+      }
+      else
+      {
+        gp.AddTraining(Xtr, Ytr1, Utr);
+        gp.Predict(X, hatf1, hatg11, hatg12);
+
+        gp2.AddTraining(Xtr, Ytr2, Utr);
+        gp2.Predict(X, hatf2, hatg21, hatg22);
+      }
+
+      REAL e1 = q(5) - q_d(5); // wd
+      REAL e2 = q(6) - q_d(6);
+      REAL e3 = /* 0.1* */ (dq(5) - dq_d(5));
+      REAL e4 = /* 0.1* */ (dq(6) - dq_d(6));
+
+      r(0) = e1 + e3;
+      r(1) = e2 + e4;
+      rho(0) = e3 - ddq_d(5);
+      rho(1) = e4 - ddq_d(6);
+
+      hatF(0) = hatf1;
+      hatF(1) = hatf2;
+      hatG(0, 0) = hatg11;
+      hatG(0, 1) = hatg12;
+      hatG(1, 0) = hatg21;
+      hatG(1, 1) = hatg22;
+
+      Col<REAL> nu = -hatG * r - rho;
+
+      obstacleBF(0) = r(0) / (25 - r(0) * r(0));
+      obstacleBF(1) = r(1) / (25 - r(1) * r(1));
+      u = inv(hatG) * (-hatF + nu) - obstacleBF;
+
+      Xtr(0, 0) = q(5); // wd
+      Xtr(1, 0) = q(6);
+      Xtr(2, 0) = dq(5);
+      Xtr(3, 0) = dq(6);
+
+      Utr(0, 0) = 1;
+      Utr(1, 0) = u(0);
+      Utr(2, 0) = u(1);
+      myu(0) = u(0);
+      myu(1) = u(1);
     }
-    else
-    {
-      gp.AddTraining(Xtr, Ytr1, Utr);
-      gp.Predict(X, hatf1, hatg11, hatg12);
-
-      gp2.AddTraining(Xtr, Ytr2, Utr);
-      gp2.Predict(X, hatf2, hatg21, hatg22);
-    }
-
-    REAL e1 = q(0) - q_d(0);
-    REAL e2 = q(1) - q_d(1);
-    REAL e3 = dq(2) - dq_d(0);
-    REAL e4 = dq(3) - dq_d(1);
-
-    r(0) = e1 + e3;
-    r(1) = e2 + e4;
-    rho(0) = e3 + q_d(0);
-    rho(1) = e4 + q_d(1);
-
-    Col<REAL> nu = -r - rho;
-
-    hatF(0) = hatf1;
-    hatF(1) = hatf2;
-    hatG(0, 0) = hatg11;
-    hatG(0, 1) = hatg12;
-    hatG(1, 0) = hatg21;
-    hatG(1, 1) = hatg22;
-
-    obstacleBF(0) = r(0) / (25 - r(0) * r(0));
-    obstacleBF(1) = r(1) / (25 - r(1) * r(1));
-    u = inv(hatG) * (-hatF + nu) - obstacleBF;
-
-    Xtr(0, 0) = q(0);
-    Xtr(1, 0) = q(1);
-    Xtr(2, 0) = dq(0);
-    Xtr(3, 0) = dq(1);
-
-    Utr(0, 0) = 1;
-    Utr(1, 0) = u(0);
-    Utr(2, 0) = u(1);
 
     // 误差计算
     Eigen::Matrix<double, 7, 1> error;
@@ -338,55 +345,34 @@ namespace franka_example_controllers
     // dr = ddq_d + K1 * derror;
 
     // 命令加速度与输入力矩
-    Eigen::VectorXd qc(7), tau_d(7);
+
     // 纯PD控制----------------------------------------------------------------
-    // tau_d << Kp * error + Kv * derror; /* + G */
+    tau_d << Kp * error + Kv * derror; /* + G */
     // 计算力矩 + PD-----------------------------------------------------------
-    qc = ddq_d + Kp * error + Kv * derror;
-    tau_d << inertiaMatrix1 * (qc) + coriolisTerm; /* + G */
+    // qc = ddq_d + Kp * error + Kv * derror;
+    // tau_d << inertiaMatrix1 * (qc) + coriolisTerm; /* + G */
+
+    // tau_d(5) = myu(0);                             // wd
+    // tau_d(6) = myu(1);
+    
     // 反步控制----------------------------------------------------------------
     // tau_d << inertiaMatrix2 * dr + coriolisMatrix * dr + K2 * error2 + K1 * derror; /* + G */
     // 小练-------------------------------------------------------------------
     // tau_d << inertiaMatrix1 * (Kp * error + Kv * derror); /* + G */
 
     // debug
-    time++;
+
     if (time % 1 == 0)
     {
       myfile << "--------------------------------------------------------------" << std::endl;
       myfile << "time: " << time << "_" << std::endl;
-      myfile << "q_d:" << std::endl;
-      myfile << q_d.transpose() << std::endl;
       myfile << "q:" << std::endl;
       myfile << q.transpose() << std::endl;
-      myfile << "franka:M:" << std::endl;
-      myfile << inertiaMatrix1 << std::endl;
-      myfile << "pinocchino:M_pin:" << std::endl;
-      myfile << M_pin << std::endl;
-      myfile << "franka:CTerm:" << std::endl;
-      myfile << coriolisTerm << std::endl;
-      myfile << "pinocchino:CTerm:" << std::endl;
-      myfile << C_pin * dq << std::endl;
-      myfile << "pinocchino:CTerm2:" << std::endl;
-      myfile << C_pin_ * dq << std::endl;
-      // myfile << "franka:G:" << std::endl;
-      // myfile << G << std::endl;
-      myfile << "pinocchino:G:" << std::endl;
-      myfile << G_pin << std::endl;
-      myfile << "franka:J:" << std::endl;
-      myfile << J << std::endl;
-      myfile << "pinocchino:J1:" << std::endl;
-      myfile << J_pin1 << std::endl;
-      myfile << "pinocchino:J2:" << std::endl;
-      myfile << J_pin2 << std::endl;
-      // myfile << "pinocchino:J3:" << std::endl;
-      // myfile << J_pin3 << std::endl;
-      myfile << "pinocchino:J4:" << std::endl;
-      myfile << J_pin4 << std::endl;
-      myfile << "pinocchino:C:" << std::endl;
-      myfile << C_pin << std::endl;
-      myfile << "pinocchino:C2:" << std::endl;
-      myfile << C_pin_ << std::endl;
+      myfile << "dq:" << std::endl;
+      myfile << dq.transpose() << std::endl;
+      myfile << "ddq:" << std::endl;
+      myfile << ddq.transpose() << std::endl;
+      time++;
     }
 
     // 平滑命令
@@ -402,6 +388,8 @@ namespace franka_example_controllers
       param_debug.jointError[i] = error[i];
       param_debug.q_d[i] = q_d[i];
       param_debug.q[i] = q[i];
+      param_debug.dq_d[i] = q_d[i];
+      param_debug.dq[i] = q[i];
       param_debug.tau_d[i] = tau_d[i];
     }
     paramForDebug.publish(param_debug);

@@ -80,7 +80,7 @@ namespace franka_example_controllers
     void controllerParamRenew();
 
     // debug，绘图
-    int time = 0;
+    int time = 1;
     std::ofstream myfile;
     ros::Publisher paramForDebug;
 
@@ -152,6 +152,8 @@ namespace franka_example_controllers
     int time = 0;
     std::ofstream myfile;
     ros::Publisher paramForDebug;
+
+
   };
 
 } // namespace franka_example_controllers
