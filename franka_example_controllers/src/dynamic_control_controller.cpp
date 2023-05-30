@@ -151,9 +151,9 @@ namespace franka_example_controllers
 
     // 期望轨迹生成
     elapsed_time += t;
-    double delta_angle = M_PI / 8 * (1 - std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.2;
-    double dot_delta_angle = -M_PI / 8 * M_PI / 6 * (std::cos(M_PI / 6.0 * elapsed_time.toSec())) * 0.2;
-    double ddot_delta_angle = M_PI / 8 * M_PI / 6 * M_PI / 6 * (std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.2;
+    double delta_angle = M_PI / 8 * (1 - std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
+    double dot_delta_angle = -M_PI / 8 * M_PI / 6 * (std::cos(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
+    double ddot_delta_angle = M_PI / 8 * M_PI / 6 * M_PI / 6 * (std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
     for (size_t i = 0; i < 7; ++i)
     {
       // if (i == 4)
@@ -314,7 +314,7 @@ namespace franka_example_controllers
       hatG(1, 0) = hatg21;
       hatG(1, 1) = hatg22;
 
-      Col<REAL> nu = -hatG * r - rho;
+      Col<REAL> nu = -r - rho;
 
       obstacleBF(0) = r(0) / (25 - r(0) * r(0));
       obstacleBF(1) = r(1) / (25 - r(1) * r(1));
@@ -351,18 +351,16 @@ namespace franka_example_controllers
     // 计算力矩 + PD-----------------------------------------------------------
     // qc = ddq_d + Kp * error + Kv * derror;
     // tau_d << inertiaMatrix1 * (qc) + coriolisTerm; /* + G */
-
-    // tau_d(5) = myu(0);                             // wd
-    // tau_d(6) = myu(1);
-    
     // 反步控制----------------------------------------------------------------
     // tau_d << inertiaMatrix2 * dr + coriolisMatrix * dr + K2 * error2 + K1 * derror; /* + G */
     // 小练-------------------------------------------------------------------
     // tau_d << inertiaMatrix1 * (Kp * error + Kv * derror); /* + G */
 
+    tau_d(5) = myu(0);                             // wd
+    tau_d(6) = myu(1);
     // debug
 
-    if (time % 1 == 0)
+    if (time % 100 == 0)
     {
       myfile << "--------------------------------------------------------------" << std::endl;
       myfile << "time: " << time << "_" << std::endl;
@@ -372,9 +370,9 @@ namespace franka_example_controllers
       myfile << dq.transpose() << std::endl;
       myfile << "ddq:" << std::endl;
       myfile << ddq.transpose() << std::endl;
-      time++;
-    }
 
+    }
+    time++;
     // 平滑命令
     tau_d << saturateTorqueRate(tau_d, tau_J_d);
     for (size_t i = 0; i < 7; ++i)
@@ -388,8 +386,8 @@ namespace franka_example_controllers
       param_debug.jointError[i] = error[i];
       param_debug.q_d[i] = q_d[i];
       param_debug.q[i] = q[i];
-      param_debug.dq_d[i] = q_d[i];
-      param_debug.dq[i] = q[i];
+      param_debug.dq_d[i] = dq_d[i];
+      param_debug.dq[i] = dq[i];
       param_debug.tau_d[i] = tau_d[i];
     }
     paramForDebug.publish(param_debug);
