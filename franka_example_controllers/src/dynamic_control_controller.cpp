@@ -247,7 +247,7 @@ namespace franka_example_controllers
     Eigen::MatrixXd M_pin = data.M;
 
     // GP
-    if (time % 10 == 0 || time == 1)
+    if (time % 1 == 0 || time == 1)
     {
       Ytr1 = ddq(5); // wd
       Ytr2 = ddq(6);
@@ -255,11 +255,11 @@ namespace franka_example_controllers
       Col<REAL> kernel_param = "5.0 3.0";
       SqExpKernel kernel(kernel_param);
       ConstantMean mean("0,4,1");
-      GP gp(0.01, &kernel, &mean);
+      GP gp(0.005, &kernel, &mean);
 
       SqExpKernel kernel2(kernel_param);
       ConstantMean mean2("0,2,3");
-      GP gp2(0.01, &kernel2, &mean2);
+      GP gp2(0.005, &kernel2, &mean2);
 
       REAL hatf1, hatf2, hatg11, hatg12, hatg21, hatg22;
 
@@ -314,7 +314,7 @@ namespace franka_example_controllers
       hatG(1, 0) = hatg21;
       hatG(1, 1) = hatg22;
 
-      Col<REAL> nu = -r - rho;
+      Col<REAL> nu = -5 * r - rho;
 
       obstacleBF(0) = r(0) / (25 - r(0) * r(0));
       obstacleBF(1) = r(1) / (25 - r(1) * r(1));
@@ -356,7 +356,7 @@ namespace franka_example_controllers
     // 小练-------------------------------------------------------------------
     // tau_d << inertiaMatrix1 * (Kp * error + Kv * derror); /* + G */
 
-    tau_d(5) = myu(0);                             // wd
+    tau_d(5) = myu(0); // wd
     tau_d(6) = myu(1);
     // debug
 
@@ -370,7 +370,6 @@ namespace franka_example_controllers
       myfile << dq.transpose() << std::endl;
       myfile << "ddq:" << std::endl;
       myfile << ddq.transpose() << std::endl;
-
     }
     time++;
     // 平滑命令
