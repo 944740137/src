@@ -77,9 +77,9 @@ catkin_package(
 #生成库
 add_library(main_controller
   src/rosController/main_controller.cpp
-  src/robot/myrobot.cpp
+  # src/robot/myrobot.cpp
   src/algorithm/pinocchino_interactive.cpp
-  src/controller/controller.cpp
+  # src/controller/controller.cpp
   # src/myrobot.cpp
 )
 
