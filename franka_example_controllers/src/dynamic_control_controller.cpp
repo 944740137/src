@@ -134,8 +134,8 @@ namespace franka_example_controllers
     q_initial = q_initial_;
     elapsed_time = ros::Duration(0.0);
 
-    if (pinInteractive == nullptr)
-      pinInteractive = new pinLibInteractive();
+    // if (pinInteractive == nullptr)
+    //   pinInteractive = new pinLibInteractive();
   }
   void JointDynamicControlController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
@@ -148,12 +148,13 @@ namespace franka_example_controllers
              << std::endl;
       // firstUpdate = false;
     }
-
+    int axis1 = 2 - 1;
+    int axis2 = 3 - 1;
     // 期望轨迹生成
     elapsed_time += t;
-    double delta_angle = M_PI / 8 * (1 - std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
-    double dot_delta_angle = -M_PI / 8 * M_PI / 6 * (std::cos(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
-    double ddot_delta_angle = M_PI / 8 * M_PI / 6 * M_PI / 6 * (std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
+    double delta_angle = M_PI / 16 * (1 - std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
+    double dot_delta_angle = -M_PI / 16 * M_PI / 6 * (std::cos(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
+    double ddot_delta_angle = M_PI / 16 * M_PI / 6 * M_PI / 6 * (std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
     for (size_t i = 0; i < 7; ++i)
     {
       // if (i == 4)
@@ -171,7 +172,7 @@ namespace franka_example_controllers
       q_d[i] = q_initial[i];
       dq_d[i] = 0;
       ddq_d[i] = 0;
-      if (i == 5 || i == 6) // wd
+      if (i == axis1 || i == axis2) // wd
       {
         q_d[i] = q_initial[i] + delta_angle;
         dq_d[i] = dot_delta_angle;
@@ -195,7 +196,7 @@ namespace franka_example_controllers
     Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> G_(g_array.data());
-
+    double r1 = 0.1;
     // ddq
     if (firstUpdate)
     {
@@ -203,54 +204,58 @@ namespace franka_example_controllers
       qc.setZero();
       ddq.setZero();
       dq_old.setZero();
+      S1 = dq;
       firstUpdate = false;
     }
     else
     {
       ddq = (dq - dq_old) / t.toSec();
       dq_old = dq;
+
+      /* ddq= */ S1_dot = (dq - S1) / r1;
+      S1 = S1_dot * t.toSec() + S1;
     }
 
     // pinocchino
-    pinocchio::Data data = pinInteractive->getpData();
-    pinocchio::Model model = pinInteractive->getpModel();
+    /*     pinocchio::Data data = pinInteractive->getpData();
+        pinocchio::Model model = pinInteractive->getpModel();
 
-    pinocchio::forwardKinematics(model, data, q);
-    pinocchio::updateFramePlacements(model, data);
+        pinocchio::forwardKinematics(model, data, q);
+        pinocchio::updateFramePlacements(model, data);
 
-    pinocchio::computeJointJacobians(model, data, q);
-    Eigen::MatrixXd J_pin1 = data.J;
-    pinocchio::computeJointJacobiansTimeVariation(model, data, q, dq);
-    Eigen::MatrixXd dJ_pin = data.dJ;
+        pinocchio::computeJointJacobians(model, data, q);
+        Eigen::MatrixXd J_pin1 = data.J;
+        pinocchio::computeJointJacobiansTimeVariation(model, data, q, dq);
+        Eigen::MatrixXd dJ_pin = data.dJ;
 
-    Eigen::MatrixXd J_pin2 = pinocchio::computeJointJacobians(model, data);
+        Eigen::MatrixXd J_pin2 = pinocchio::computeJointJacobians(model, data);
 
-    Eigen::Matrix<double, 6, 7> J_pin3;
-    Eigen::Matrix<double, 6, 7> J_pin4;
-    // Eigen::Matrix<double, 6, 4> J1, J2, dJ;
+        Eigen::Matrix<double, 6, 7> J_pin3;
+        Eigen::Matrix<double, 6, 7> J_pin4;
+        // Eigen::Matrix<double, 6, 4> J1, J2, dJ;
 
-    pinocchio::JointIndex joint_id = (pinocchio::JointIndex)(model.njoints - 2);
+        pinocchio::JointIndex joint_id = (pinocchio::JointIndex)(model.njoints - 2);
 
-    computeJointJacobian(model, data, q, joint_id, J_pin3);
-    pinocchio::getJointJacobian(model, data, joint_id, pinocchio::LOCAL_WORLD_ALIGNED, J_pin4);
+        computeJointJacobian(model, data, q, joint_id, J_pin3);
+        pinocchio::getJointJacobian(model, data, joint_id, pinocchio::LOCAL_WORLD_ALIGNED, J_pin4);
 
-    pinocchio::rnea(model, data, q, dq, ddq_d);
-    Eigen::MatrixXd G_pin = pinocchio::computeGeneralizedGravity(model, data, q);
-    // Eigen::MatrixXd G_pin = data.g;
-    pinocchio::computeCoriolisMatrix(model, data, q, dq);
-    Eigen::MatrixXd C_pin = data.C;
-    pinocchio::getCoriolisMatrix(model, data);
-    Eigen::MatrixXd C_pin_ = data.C;
+        pinocchio::rnea(model, data, q, dq, ddq_d);
+        Eigen::MatrixXd G_pin = pinocchio::computeGeneralizedGravity(model, data, q);
+        // Eigen::MatrixXd G_pin = data.g;
+        pinocchio::computeCoriolisMatrix(model, data, q, dq);
+        Eigen::MatrixXd C_pin = data.C;
+        pinocchio::getCoriolisMatrix(model, data);
+        Eigen::MatrixXd C_pin_ = data.C;
 
-    pinocchio::crba(model, data, q);
-    data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
-    Eigen::MatrixXd M_pin = data.M;
+        pinocchio::crba(model, data, q);
+        data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
+        Eigen::MatrixXd M_pin = data.M; */
 
     // GP
     if (time % 1 == 0 || time == 1)
     {
-      Ytr1 = ddq(5); // wd
-      Ytr2 = ddq(6);
+      Ytr1 = S1_dot(axis1); // wd
+      Ytr2 = S1_dot(axis2);
 
       Col<REAL> kernel_param = "5.0 3.0";
       SqExpKernel kernel(kernel_param);
@@ -271,10 +276,10 @@ namespace franka_example_controllers
       Col<REAL> u(2);
       Col<REAL> obstacleBF(2);
       Col<REAL> X(4);
-      X(0) = q(5); // wd
-      X(1) = q(6);
-      X(2) = dq(5);
-      X(3) = dq(6);
+      X(0) = q(axis1); // wd
+      X(1) = q(axis2);
+      X(2) = dq(axis1);
+      X(3) = dq(axis2);
       if (Xtr.is_empty())
       {
         hatf1 = 0;
@@ -297,15 +302,15 @@ namespace franka_example_controllers
         gp2.Predict(X, hatf2, hatg21, hatg22);
       }
 
-      REAL e1 = q(5) - q_d(5); // wd
-      REAL e2 = q(6) - q_d(6);
-      REAL e3 = /* 0.1* */ (dq(5) - dq_d(5));
-      REAL e4 = /* 0.1* */ (dq(6) - dq_d(6));
+      REAL e1 = q(axis1) - q_d(axis1); // wd
+      REAL e2 = q(axis2) - q_d(axis2);
+      REAL e3 = /* 0.1* */ (dq(axis1) - dq_d(axis1));
+      REAL e4 = /* 0.1* */ (dq(axis2) - dq_d(axis2));
 
       r(0) = e1 + e3;
       r(1) = e2 + e4;
-      rho(0) = e3 - ddq_d(5);
-      rho(1) = e4 - ddq_d(6);
+      rho(0) = e3 - ddq_d(axis1);
+      rho(1) = e4 - ddq_d(axis2);
 
       hatF(0) = hatf1;
       hatF(1) = hatf2;
@@ -320,10 +325,10 @@ namespace franka_example_controllers
       obstacleBF(1) = r(1) / (25 - r(1) * r(1));
       u = inv(hatG) * (-hatF + nu) - obstacleBF;
 
-      Xtr(0, 0) = q(5); // wd
-      Xtr(1, 0) = q(6);
-      Xtr(2, 0) = dq(5);
-      Xtr(3, 0) = dq(6);
+      Xtr(0, 0) = q(axis1); // wd
+      Xtr(1, 0) = q(axis2);
+      Xtr(2, 0) = dq(axis1);
+      Xtr(3, 0) = dq(axis2);
 
       Utr(0, 0) = 1;
       Utr(1, 0) = u(0);
@@ -356,8 +361,8 @@ namespace franka_example_controllers
     // 小练-------------------------------------------------------------------
     // tau_d << inertiaMatrix1 * (Kp * error + Kv * derror); /* + G */
 
-    tau_d(5) = myu(0); // wd
-    tau_d(6) = myu(1);
+    tau_d(axis1) = myu(0); // wd
+    tau_d(axis2) = myu(1);
     // debug
 
     if (time % 100 == 0)
