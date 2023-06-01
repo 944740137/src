@@ -116,15 +116,15 @@ namespace franka_example_controllers
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q_initial_(initial_state.q.data());
 
     // 控制参数赋初值
-    int tmp = 1;
-    Kp.setIdentity();
-    Kp = tmp * Eigen::MatrixXd::Identity(7, 7);
-    Kv.setIdentity();
-    Kv = tmp * Eigen::MatrixXd::Identity(7, 7);
-    K1.setIdentity();
-    K1 = tmp * Eigen::MatrixXd::Identity(7, 7);
-    K2.setIdentity();
-    K2 = tmp * Eigen::MatrixXd::Identity(7, 7);
+    // int tmp = 1;
+    // Kp.setIdentity();
+    // Kp = tmp * Eigen::MatrixXd::Identity(7, 7);
+    // Kv.setIdentity();
+    // Kv = tmp * Eigen::MatrixXd::Identity(7, 7);
+    // K1.setIdentity();
+    // K1 = tmp * Eigen::MatrixXd::Identity(7, 7);
+    // K2.setIdentity();
+    // K2 = tmp * Eigen::MatrixXd::Identity(7, 7);
 
     // q_d.setZero();
     dq_d.setZero();
@@ -152,9 +152,9 @@ namespace franka_example_controllers
     int axis2 = 3 - 1;
     // 期望轨迹生成
     elapsed_time += t;
-    double delta_angle = M_PI / 16 * (1 - std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
-    double dot_delta_angle = -M_PI / 16 * M_PI / 6 * (std::cos(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
-    double ddot_delta_angle = M_PI / 16 * M_PI / 6 * M_PI / 6 * (std::sin(M_PI / 6.0 * elapsed_time.toSec())) * 0.8;
+    double delta_angle = M_PI / 16 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
+    double dot_delta_angle = M_PI / 16 * M_PI / 5.0 * (std::sin(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
+    double ddot_delta_angle = M_PI / 16 * M_PI / 5.0 * M_PI / 5.0 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
     for (size_t i = 0; i < 7; ++i)
     {
       // if (i == 4)
@@ -409,19 +409,69 @@ namespace franka_example_controllers
     }
     return tau_d_saturated;
   }
+  bool A = true;
   void JointDynamicControlController::controlParamCallback(franka_example_controllers::dynamic_control_paramConfig &config, uint32_t /*level*/)
   {
-    K1_target = config.K1 * Eigen::MatrixXd::Identity(7, 7);
-    K2_target = config.K2 * Eigen::MatrixXd::Identity(7, 7);
-    Kp_target = config.Kp * Eigen::MatrixXd::Identity(7, 7);
-    Kv_target = config.Kv * Eigen::MatrixXd::Identity(7, 7);
+    if (A)
+    {
+      Kp(0, 0) = config.Kp1;
+      Kv(0, 0) = config.Kv1;
+
+      Kp(1, 1) = config.Kp2;
+      Kv(1, 1) = config.Kv2;
+
+      Kp(2, 2) = config.Kp3;
+      Kv(2, 2) = config.Kv3;
+
+      Kp(3, 3) = config.Kp4;
+      Kv(3, 3) = config.Kv4;
+
+      Kp(4, 4) = config.Kp5;
+      Kv(4, 4) = config.Kv5;
+
+      Kp(5, 5) = config.Kp6;
+      Kv(5, 5) = config.Kv6;
+
+      Kp(6, 6) = config.Kp7;
+      Kv(6, 6) = config.Kv7;
+
+      A = false;
+    }
+    Kp_target(0, 0) = config.Kp1;
+    Kv_target(0, 0) = config.Kv1;
+
+    Kp_target(1, 1) = config.Kp2;
+    Kv_target(1, 1) = config.Kv2;
+
+    Kp_target(2, 2) = config.Kp3;
+    Kv_target(2, 2) = config.Kv3;
+
+    Kp_target(3, 3) = config.Kp4;
+    Kv_target(3, 3) = config.Kv4;
+
+    Kp_target(4, 4) = config.Kp5;
+    Kv_target(4, 4) = config.Kv5;
+
+    Kp_target(5, 5) = config.Kp6;
+    Kv_target(5, 5) = config.Kv6;
+
+    Kp_target(6, 6) = config.Kp7;
+    Kv_target(6, 6) = config.Kv7;
+
+    KGPp1_d = config.KGPp1;
+    KGPp2_d = config.KGPp2;
+    KGPv1_d = config.KGPv1;
+    KGPv2_d = config.KGPv2;
   }
   void JointDynamicControlController::controllerParamRenew()
   {
     Kp = filter_params * Kp_target + (1.0 - filter_params) * Kp;
     Kv = filter_params * Kv_target + (1.0 - filter_params) * Kv;
-    K1 = filter_params * K1_target + (1.0 - filter_params) * K1;
-    K2 = filter_params * K2_target + (1.0 - filter_params) * K2;
+
+    KGPp1 = filter_params * KGPp1_d + (1.0 - filter_params) * KGPp1;
+    KGPp2 = filter_params * KGPp2_d + (1.0 - filter_params) * KGPp2;
+    KGPv1 = filter_params * KGPv1_d + (1.0 - filter_params) * KGPv1;
+    KGPv2 = filter_params * KGPv2_d + (1.0 - filter_params) * KGPv2;
   }
 
   bool CartesianDynamicControlController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
@@ -609,10 +659,10 @@ namespace franka_example_controllers
   }
   void CartesianDynamicControlController::controlParamCallback(franka_example_controllers::dynamic_control_paramConfig &config, uint32_t /*level*/)
   {
-    Kp_target.setIdentity();
-    Kp_target = config.Kp * Eigen::MatrixXd::Identity(7, 7);
-    Kv_target.setIdentity();
-    Kv_target = config.Kv * Eigen::MatrixXd::Identity(7, 7);
+    // Kp_target.setIdentity();
+    // Kp_target = config.Kp * Eigen::MatrixXd::Identity(7, 7);
+    // Kv_target.setIdentity();
+    // Kv_target = config.Kv * Eigen::MatrixXd::Identity(7, 7);
   }
   void CartesianDynamicControlController::controllerParamRenew()
   {

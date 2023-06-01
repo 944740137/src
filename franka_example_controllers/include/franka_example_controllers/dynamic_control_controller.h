@@ -74,6 +74,15 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> S1;
     Eigen::Matrix<double, 7, 1> S1_dot;
 
+    double KGPp1 = 1.0;
+    double KGPp2 = 1.0;
+    double KGPv1 = 1;
+    double KGPv2 = 1;
+    double KGPp1_d = 1.0;
+    double KGPp2_d = 1.0;
+    double KGPv1_d = 1;
+    double KGPv2_d = 1;
+
     // 动态配置参数
     std::unique_ptr<dynamic_reconfigure::Server<franka_example_controllers::dynamic_control_paramConfig>> dynamic_server_compliance_param_;
     ros::NodeHandle dynamic_reconfigure_compliance_param_node_;
