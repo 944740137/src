@@ -302,10 +302,10 @@ namespace franka_example_controllers
         gp2.Predict(X, hatf2, hatg21, hatg22);
       }
 
-      REAL e1 = q(axis1) - q_d(axis1); // wd
-      REAL e2 = q(axis2) - q_d(axis2);
-      REAL e3 = /* 0.1* */ (dq(axis1) - dq_d(axis1));
-      REAL e4 = /* 0.1* */ (dq(axis2) - dq_d(axis2));
+      REAL e1 = KGPp1 * (q(axis1) - q_d(axis1)); // wd
+      REAL e2 = KGPp2 * (q(axis2) - q_d(axis2));
+      REAL e3 = KGPv1 * (dq(axis1) - dq_d(axis1));
+      REAL e4 = KGPv2 * (dq(axis2) - dq_d(axis2));
 
       r(0) = e1 + e3;
       r(1) = e2 + e4;
@@ -319,7 +319,7 @@ namespace franka_example_controllers
       hatG(1, 0) = hatg21;
       hatG(1, 1) = hatg22;
 
-      Col<REAL> nu = -5 * r - rho;
+      Col<REAL> nu = -r - rho;
 
       obstacleBF(0) = r(0) / (25 - r(0) * r(0));
       obstacleBF(1) = r(1) / (25 - r(1) * r(1));
