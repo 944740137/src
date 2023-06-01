@@ -6,7 +6,7 @@ using namespace std;
 #include "GP.h"
 #include "CGOptimizer.h"
 #include "armadillo_backsub.h"
-
+int mycount = 20;
 GP::GP(REAL s2_n, KernelFunction *kernel, MeanFunction *mean)
 {
   this->kernel = kernel;
@@ -98,7 +98,7 @@ void GP::AddTraining(const Mat<REAL>& X, const Row<REAL> &y, const Mat<REAL>& ut
   int new_n_cols, new_n_rows;
   count++;
   
-  if (count <= 20)
+  if (count <= mycount)
   {
       if (!this->y.is_empty())
       {
@@ -221,7 +221,7 @@ void GP::AddTraining(const Mat<REAL>& X, const Row<REAL> &y, const Mat<REAL>& ut
   }
   else
   {
-      int index = count % 20;
+      int index = count % mycount;
       if (index)
       {
           this->y.col(index - 1) = y;
@@ -230,9 +230,9 @@ void GP::AddTraining(const Mat<REAL>& X, const Row<REAL> &y, const Mat<REAL>& ut
       }
       else
       {
-          this->y.col(20 - 1) = y;
-          this->X.col(20 - 1) = X;
-          this->U.col(20 - 1) = utr;
+          this->y.col(mycount - 1) = y;
+          this->X.col(mycount - 1) = X;
+          this->U.col(mycount - 1) = utr;
       }
   }
 

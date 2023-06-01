@@ -148,13 +148,14 @@ namespace franka_example_controllers
              << std::endl;
       // firstUpdate = false;
     }
-    int axis1 = 4 - 1;
-    int axis2 = 5 - 1;
+    int axis1 = 3 - 1;
+    int axis2 = 4 - 1;
     // 期望轨迹生成
     elapsed_time += t;
-    double delta_angle = M_PI / 16 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
-    double dot_delta_angle = M_PI / 16 * M_PI / 5.0 * (std::sin(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
-    double ddot_delta_angle = M_PI / 16 * M_PI / 5.0 * M_PI / 5.0 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
+    double part = 1.0;
+    double delta_angle = M_PI / 16 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * part;
+    double dot_delta_angle = M_PI / 16 * M_PI / 5.0 * (std::sin(M_PI / 5.0 * elapsed_time.toSec())) * part;
+    double ddot_delta_angle = M_PI / 16 * M_PI / 5.0 * M_PI / 5.0 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * part;
     for (size_t i = 0; i < 7; ++i)
     {
       // if (i == 4)
@@ -196,7 +197,7 @@ namespace franka_example_controllers
     Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> G_(g_array.data());
-    double r1 = 0.1;
+    double r1 = 0.005;
     // ddq
     if (firstUpdate)
     {
@@ -252,19 +253,20 @@ namespace franka_example_controllers
         Eigen::MatrixXd M_pin = data.M; */
 
     // GP
-    if (time % 1 == 0 || time == 1)
+
+    if (time % 1 == 0 || time == 1) // wq
     {
       Ytr1 = S1_dot(axis1); // wd
       Ytr2 = S1_dot(axis2);
 
-      Col<REAL> kernel_param = "5.0 3.0";
+      Col<REAL> kernel_param = "1.0 3.0";
       SqExpKernel kernel(kernel_param);
       ConstantMean mean("0,4,1");
-      static GP gp(0.02, &kernel, &mean);
+      static GP gp(1, &kernel, &mean);
 
       SqExpKernel kernel2(kernel_param);
       ConstantMean mean2("0,2,3");
-      static GP gp2(0.02, &kernel2, &mean2);
+      static GP gp2(1, &kernel2, &mean2);
 
       REAL hatf1, hatf2, hatg11, hatg12, hatg21, hatg22;
 
@@ -301,7 +303,10 @@ namespace franka_example_controllers
           // std::cout << "--------------if 1--------------" << std::endl;
           gp.AddTraining(Xtr, Ytr1, Utr);
         }
-
+        std::cout << "-----------K-----------" << std::endl;
+        std::cout << gp.GetTrainingKData() << std::endl;
+        std::cout << "-----------X-----------" << std::endl;
+        std::cout << gp.GetTrainingData() << std::endl;
         gp.Predict(X, hatf1, hatg11, hatg12);
         // std::cout << "--------------else 1 --------------" << std::endl;
         if (time % 5 == 0 || time == 2)
@@ -314,10 +319,10 @@ namespace franka_example_controllers
         // std::cout << "--------------else 2 --------------" << std::endl;
       }
 
-      REAL e1 = 1.0 * (q(axis1) - q_d(axis1)); // wd
-      REAL e2 = 1.0 * (q(axis2) - q_d(axis2));
-      REAL e3 = 1.0 * (dq(axis1) - dq_d(axis1));
-      REAL e4 = 1.0 * (dq(axis2) - dq_d(axis2));
+      REAL e1 = 60.0 * (q(axis1) - q_d(axis1)); // wd
+      REAL e2 = 50.0 * (q(axis2) - q_d(axis2));
+      REAL e3 = 4 * (dq(axis1) - dq_d(axis1));
+      REAL e4 = 4 * (dq(axis2) - dq_d(axis2));
 
       r(0) = e1 + e3;
       r(1) = e2 + e4;
@@ -331,7 +336,7 @@ namespace franka_example_controllers
       hatG(1, 0) = hatg21;
       hatG(1, 1) = hatg22;
 
-      Col<REAL> nu = -r - rho;
+      Col<REAL> nu = -1 * r - rho;
 
       obstacleBF(0) = r(0) / (25 - r(0) * r(0));
       obstacleBF(1) = r(1) / (25 - r(1) * r(1));
@@ -373,7 +378,7 @@ namespace franka_example_controllers
     // 小练-------------------------------------------------------------------
     // tau_d << inertiaMatrix1 * (Kp * error + Kv * derror); /* + G */
 
-    tau_d(axis1) = myu(0); // wd
+    tau_d(axis1) = myu(0); // wd ///wq
     tau_d(axis2) = myu(1);
     // debug
 

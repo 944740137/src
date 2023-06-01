@@ -59,6 +59,7 @@ public:
   inline Mat<REAL> &GetTrainingData() { return X; }
   inline Mat<REAL> &GetTrainingYData() { return y; }
   inline Mat<REAL>& GetTrainingUData() { return U; }
+  inline Mat<REAL>& GetTrainingKData() { return K; }
   inline KernelFunction *GetKernelFunction() { return this->kernel; }
   inline MeanFunction *GetMeanFunction() { return this->mean; }
   
