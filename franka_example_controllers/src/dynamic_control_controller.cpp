@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Franka Emika GmbH
 // Use of this source code is governed by the Apache-2.0 license, see LICENSE
-#include <algorithm/pinocchino_interactive.h>
+// #include <algorithm/pinocchino_interactive.h>
 #include <cmath>
 #include <memory>
 
@@ -18,7 +18,7 @@ const char C_Date[12] = __DATE__;
 const char C_Time[9] = __TIME__;
 Col<REAL> myu(2);
 Eigen::VectorXd qc(7), tau_d(7);
-extern pinLibInteractive *pinInteractive;
+// extern pinLibInteractive *pinInteractive;
 namespace franka_example_controllers
 {
 
@@ -148,8 +148,8 @@ namespace franka_example_controllers
              << std::endl;
       // firstUpdate = false;
     }
-    int axis1 = 2 - 1;
-    int axis2 = 3 - 1;
+    int axis1 = 4 - 1;
+    int axis2 = 5 - 1;
     // 期望轨迹生成
     elapsed_time += t;
     double delta_angle = M_PI / 16 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * 0.2;
@@ -260,11 +260,11 @@ namespace franka_example_controllers
       Col<REAL> kernel_param = "5.0 3.0";
       SqExpKernel kernel(kernel_param);
       ConstantMean mean("0,4,1");
-      GP gp(0.005, &kernel, &mean);
+      static GP gp(0.02, &kernel, &mean);
 
       SqExpKernel kernel2(kernel_param);
       ConstantMean mean2("0,2,3");
-      GP gp2(0.005, &kernel2, &mean2);
+      static GP gp2(0.02, &kernel2, &mean2);
 
       REAL hatf1, hatf2, hatg11, hatg12, hatg21, hatg22;
 
@@ -295,17 +295,29 @@ namespace franka_example_controllers
       }
       else
       {
-        gp.AddTraining(Xtr, Ytr1, Utr);
-        gp.Predict(X, hatf1, hatg11, hatg12);
+        // std::cout << "--------------else--------------" << std::endl;
+        if (time % 5 == 0 || time == 2)
+        {
+          // std::cout << "--------------if 1--------------" << std::endl;
+          gp.AddTraining(Xtr, Ytr1, Utr);
+        }
 
-        gp2.AddTraining(Xtr, Ytr2, Utr);
+        gp.Predict(X, hatf1, hatg11, hatg12);
+        // std::cout << "--------------else 1 --------------" << std::endl;
+        if (time % 5 == 0 || time == 2)
+        {
+          // std::cout << "--------------if 2--------------" << std::endl;
+          gp2.AddTraining(Xtr, Ytr2, Utr);
+        }
+
         gp2.Predict(X, hatf2, hatg21, hatg22);
+        // std::cout << "--------------else 2 --------------" << std::endl;
       }
 
-      REAL e1 = KGPp1 * (q(axis1) - q_d(axis1)); // wd
-      REAL e2 = KGPp2 * (q(axis2) - q_d(axis2));
-      REAL e3 = KGPv1 * (dq(axis1) - dq_d(axis1));
-      REAL e4 = KGPv2 * (dq(axis2) - dq_d(axis2));
+      REAL e1 = 1.0 * (q(axis1) - q_d(axis1)); // wd
+      REAL e2 = 1.0 * (q(axis2) - q_d(axis2));
+      REAL e3 = 1.0 * (dq(axis1) - dq_d(axis1));
+      REAL e4 = 1.0 * (dq(axis2) - dq_d(axis2));
 
       r(0) = e1 + e3;
       r(1) = e2 + e4;

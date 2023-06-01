@@ -98,7 +98,7 @@ void GP::AddTraining(const Mat<REAL>& X, const Row<REAL> &y, const Mat<REAL>& ut
   int new_n_cols, new_n_rows;
   count++;
   
-  if (count <= 50)
+  if (count <= 20)
   {
       if (!this->y.is_empty())
       {
@@ -221,7 +221,7 @@ void GP::AddTraining(const Mat<REAL>& X, const Row<REAL> &y, const Mat<REAL>& ut
   }
   else
   {
-      int index = count % 50;
+      int index = count % 20;
       if (index)
       {
           this->y.col(index - 1) = y;
@@ -230,9 +230,9 @@ void GP::AddTraining(const Mat<REAL>& X, const Row<REAL> &y, const Mat<REAL>& ut
       }
       else
       {
-          this->y.col(50 - 1) = y;
-          this->X.col(50 - 1) = X;
-          this->U.col(50 - 1) = utr;
+          this->y.col(20 - 1) = y;
+          this->X.col(20 - 1) = X;
+          this->U.col(20 - 1) = utr;
       }
   }
 
