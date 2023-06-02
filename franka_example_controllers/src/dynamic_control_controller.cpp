@@ -18,6 +18,26 @@ const char C_Date[12] = __DATE__;
 const char C_Time[9] = __TIME__;
 Col<REAL> myu(2);
 Eigen::VectorXd qc(7), tau_d(7);
+long get_system_time_nanosecond();  // 纳秒
+long get_system_time_microsecond(); // 微秒
+
+long get_system_time_nanosecond()
+{
+  struct timespec timestamp = {};
+  if (0 == clock_gettime(CLOCK_REALTIME, &timestamp))
+    return timestamp.tv_sec * 1000000000 + timestamp.tv_nsec;
+  else
+    return 0;
+}
+
+long get_system_time_microsecond()
+{
+  struct timeval timestamp = {};
+  if (0 == gettimeofday(&timestamp, NULL))
+    return timestamp.tv_sec * 1000000 + timestamp.tv_usec;
+  else
+    return 0;
+}
 // extern pinLibInteractive *pinInteractive;
 namespace franka_example_controllers
 {
@@ -133,7 +153,7 @@ namespace franka_example_controllers
     ddq.setZero();
     q_initial = q_initial_;
     elapsed_time = ros::Duration(0.0);
-
+    setlocale(LC_ALL, "");
     // if (pinInteractive == nullptr)
     //   pinInteractive = new pinLibInteractive();
   }
@@ -143,8 +163,8 @@ namespace franka_example_controllers
     if (firstUpdate)
     {
       // debug
-      myfile.open("/home/wd/JointDynamicControlController.txt");
-      myfile << "JointDynamicControlController\n"
+      myfile.open("/home/wd/GP.txt");
+      myfile << "GP\n"
              << std::endl;
       // firstUpdate = false;
     }
@@ -152,7 +172,7 @@ namespace franka_example_controllers
     int axis2 = 4 - 1;
     // 期望轨迹生成
     elapsed_time += t;
-    double part = 1.0;
+    double part = 2.0;
     double delta_angle = M_PI / 16 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * part;
     double dot_delta_angle = M_PI / 16 * M_PI / 5.0 * (std::sin(M_PI / 5.0 * elapsed_time.toSec())) * part;
     double ddot_delta_angle = M_PI / 16 * M_PI / 5.0 * M_PI / 5.0 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * part;
@@ -195,9 +215,11 @@ namespace franka_example_controllers
     Eigen::Map<Eigen::Matrix<double, 7, 7>> inertiaMatrix1(mass_array.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
+
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> G_(g_array.data());
     double r1 = 0.005;
+    double r2 = 0.05;
     // ddq
     if (firstUpdate)
     {
@@ -206,7 +228,9 @@ namespace franka_example_controllers
       ddq.setZero();
       dq_old.setZero();
       S1 = dq;
+      S2 = q;
       firstUpdate = false;
+      std::cout << "firstUpdate" << std::endl;
     }
     else
     {
@@ -215,6 +239,9 @@ namespace franka_example_controllers
 
       /* ddq= */ S1_dot = (dq - S1) / r1;
       S1 = S1_dot * t.toSec() + S1;
+
+      /* ddq= */ S2_dot = (q - S2) / r2;
+      S2 = S2_dot * t.toSec() + S2;
     }
 
     // pinocchino
@@ -253,20 +280,19 @@ namespace franka_example_controllers
         Eigen::MatrixXd M_pin = data.M; */
 
     // GP
+    Col<REAL> kernel_param = "1.0 3.0";
+    SqExpKernel kernel(kernel_param);
+    ConstantMean mean("0,4,1");
+    static GP gp(1, &kernel, &mean);
+
+    SqExpKernel kernel2(kernel_param);
+    ConstantMean mean2("0,2,3");
+    static GP gp2(1, &kernel2, &mean2);
 
     if (time % 1 == 0 || time == 1) // wq
     {
       Ytr1 = S1_dot(axis1); // wd
       Ytr2 = S1_dot(axis2);
-
-      Col<REAL> kernel_param = "1.0 3.0";
-      SqExpKernel kernel(kernel_param);
-      ConstantMean mean("0,4,1");
-      static GP gp(1, &kernel, &mean);
-
-      SqExpKernel kernel2(kernel_param);
-      ConstantMean mean2("0,2,3");
-      static GP gp2(1, &kernel2, &mean2);
 
       REAL hatf1, hatf2, hatg11, hatg12, hatg21, hatg22;
 
@@ -280,8 +306,8 @@ namespace franka_example_controllers
       Col<REAL> X(4);
       X(0) = q(axis1); // wd
       X(1) = q(axis2);
-      X(2) = dq(axis1);
-      X(3) = dq(axis2);
+      X(2) = S2_dot(axis1);
+      X(3) = S2_dot(axis2);
       if (Xtr.is_empty())
       {
         hatf1 = 0;
@@ -297,16 +323,18 @@ namespace franka_example_controllers
       }
       else
       {
+        // long tmp1 = get_system_time_microsecond();
         // std::cout << "--------------else--------------" << std::endl;
         if (time % 5 == 0 || time == 2)
         {
+
           // std::cout << "--------------if 1--------------" << std::endl;
           gp.AddTraining(Xtr, Ytr1, Utr);
         }
-        std::cout << "-----------K-----------" << std::endl;
-        std::cout << gp.GetTrainingKData() << std::endl;
-        std::cout << "-----------X-----------" << std::endl;
-        std::cout << gp.GetTrainingData() << std::endl;
+        // std::cout << "-----------K-----------" << std::endl;
+        // std::cout << gp.GetTrainingKData() << std::endl;
+        // std::cout << "-----------X-----------" << std::endl;
+        // std::cout << gp.GetTrainingData() << std::endl;
         gp.Predict(X, hatf1, hatg11, hatg12);
         // std::cout << "--------------else 1 --------------" << std::endl;
         if (time % 5 == 0 || time == 2)
@@ -317,12 +345,14 @@ namespace franka_example_controllers
 
         gp2.Predict(X, hatf2, hatg21, hatg22);
         // std::cout << "--------------else 2 --------------" << std::endl;
+        // long tmp2 = get_system_time_microsecond();
+        // ROS_INFO("持续时间1:%ld 微秒", tmp2 - tmp1);
       }
 
-      REAL e1 = 60.0 * (q(axis1) - q_d(axis1)); // wd
-      REAL e2 = 50.0 * (q(axis2) - q_d(axis2));
-      REAL e3 = 4 * (dq(axis1) - dq_d(axis1));
-      REAL e4 = 4 * (dq(axis2) - dq_d(axis2));
+      REAL e1 = KGPp1 * (q(axis1) - q_d(axis1)); // wd
+      REAL e2 = KGPp2 * (q(axis2) - q_d(axis2));
+      REAL e3 = KGPv1 * (S2_dot(axis1) - dq_d(axis1));
+      REAL e4 = KGPv2 * (S2_dot(axis2) - dq_d(axis2));
 
       r(0) = e1 + e3;
       r(1) = e2 + e4;
@@ -340,12 +370,13 @@ namespace franka_example_controllers
 
       obstacleBF(0) = r(0) / (25 - r(0) * r(0));
       obstacleBF(1) = r(1) / (25 - r(1) * r(1));
-      u = inv(hatG) * (-hatF + nu) - obstacleBF;
-
+      u = inv(hatG) * (-hatF + nu) /* - obstacleBF */;
+      // std::cout << "--------------hatG--------------" << std::endl;
+      // std::cout << hatG<< std::endl;
       Xtr(0, 0) = q(axis1); // wd
       Xtr(1, 0) = q(axis2);
-      Xtr(2, 0) = dq(axis1);
-      Xtr(3, 0) = dq(axis2);
+      Xtr(2, 0) = S2_dot(axis1);
+      Xtr(3, 0) = S2_dot(axis2);
 
       Utr(0, 0) = 1;
       Utr(1, 0) = u(0);
@@ -382,16 +413,34 @@ namespace franka_example_controllers
     tau_d(axis2) = myu(1);
     // debug
 
-    if (time % 100 == 0)
+    if (time % 1 == 0)
     {
-      myfile << "--------------------------------------------------------------" << std::endl;
-      myfile << "time: " << time << "_" << std::endl;
-      myfile << "q:" << std::endl;
-      myfile << q.transpose() << std::endl;
-      myfile << "dq:" << std::endl;
-      myfile << dq.transpose() << std::endl;
-      myfile << "ddq:" << std::endl;
-      myfile << ddq.transpose() << std::endl;
+      // myfile << "--------------------------------------------------------------" << std::endl;
+      // myfile << "time: " << time << "_" << std::endl;
+      // myfile << "q:" << std::endl;
+      // myfile << q.transpose() << std::endl;
+      // myfile << "dq:" << std::endl;
+      // myfile << dq.transpose() << std::endl;
+      // myfile << "ddq:" << std::endl;
+      // myfile << ddq.transpose() << std::endl;
+      // myfile << "error:" << std::endl;
+      // myfile << error.transpose() << std::endl;
+      // myfile << "derror:" << std::endl;
+      // myfile << derror.transpose() << std::endl;
+      // myfile << "S1:" << std::endl;
+      // myfile << S1.transpose() << std::endl;
+      // myfile << "S1_dot:" << std::endl;
+      // myfile << S1_dot.transpose() << std::endl;
+      // myfile << "PD:" << std::endl;
+      // myfile << " KGPp1:" << KGPp1 << " KGPp2:" << KGPp2 << " KGPv1:" << KGPv1 << " KGPv2:" << KGPv2 << std::endl;
+      // myfile << "-----------X1-----------" << std::endl;
+      // myfile << gp.GetTrainingData() << std::endl;
+      // myfile << "-----------K1-----------" << std::endl;
+      // myfile << gp.GetTrainingKData() << std::endl;
+      // myfile << "-----------X2-----------" << std::endl;
+      // myfile << gp2.GetTrainingData() << std::endl;
+      // myfile << "-----------K2-----------" << std::endl;
+      // myfile << gp2.GetTrainingKData() << std::endl;
     }
     time++;
     // 平滑命令
@@ -409,6 +458,11 @@ namespace franka_example_controllers
       param_debug.q[i] = q[i];
       param_debug.dq_d[i] = dq_d[i];
       param_debug.dq[i] = dq[i];
+      param_debug.S2[i] = S2[i];
+      param_debug.S2_dot[i] = S2_dot[i];
+      param_debug.S1[i] = S1[i];
+      param_debug.S1_dot[i] = S1_dot[i];
+      param_debug.ddq[i] = ddq[i];
       param_debug.tau_d[i] = tau_d[i];
     }
     paramForDebug.publish(param_debug);
@@ -452,6 +506,10 @@ namespace franka_example_controllers
       Kp(6, 6) = config.Kp7;
       Kv(6, 6) = config.Kv7;
 
+      KGPp1 = config.KGPp1;
+      KGPp2 = config.KGPp2;
+      KGPv1 = config.KGPv1;
+      KGPv2 = config.KGPv2;
       A = false;
     }
     Kp_target(0, 0) = config.Kp1;

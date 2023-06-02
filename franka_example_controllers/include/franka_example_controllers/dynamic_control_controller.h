@@ -45,7 +45,7 @@ namespace franka_example_controllers
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_; // 机器人的动力学和运动学模型
     std::vector<hardware_interface::JointHandle> joint_handles_; // 关节状态类
 
-    double filter_params{0.005};     // 滤波参数，用于动态调参
+    double filter_params{0.001};     // 滤波参数，用于动态调参
     const double delta_tau_max{1.0}; // 最大力矩变化值
     bool firstUpdate = true;         // 用于判断是不是第一个控制周期，计算雅可比导数。
 
@@ -73,6 +73,8 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> ddq;
     Eigen::Matrix<double, 7, 1> S1;
     Eigen::Matrix<double, 7, 1> S1_dot;
+    Eigen::Matrix<double, 7, 1> S2;
+    Eigen::Matrix<double, 7, 1> S2_dot;
 
     double KGPp1 = 1.0;
     double KGPp2 = 1.0;
