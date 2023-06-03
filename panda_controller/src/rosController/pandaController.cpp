@@ -9,23 +9,18 @@
 #include <franka/robot_state.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <rosController/main_controller.h>
+#include <rosController/pandaController.h>
 #include <ros/ros.h>
 
-const char C_Date[12] = __DATE__;
-const char C_Time[9] = __TIME__;
 
-// extern Robot7Controller *pController;
-// extern Robot7 *pPanda;
-
-namespace main_controller
+namespace panda_controller
 {
 
-  bool MainController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
+  bool PandaController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
   {
 
-    std::cout << "--------------init1:PandaController--------------" << std::endl;
-    std::cout << "--------------init2:PandaController--------------" << std::endl;
+    std::cout << "--------------init1:panda_controller--------------" << std::endl;
+    std::cout << "--------------init2:panda_controller--------------" << std::endl;
 
     robotInit();
 
@@ -33,13 +28,13 @@ namespace main_controller
     std::string arm_id;
     if (!node_handle.getParam("arm_id", arm_id))
     {
-      ROS_ERROR_STREAM("MainController: Could not read parameter arm_id");
+      ROS_ERROR_STREAM("panda_controller: Could not read parameter arm_id");
       return false;
     }
     std::vector<std::string> joint_names;
     if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7)
     {
-      ROS_ERROR("MainController: Invalid or no joint_names parameters provided, "
+      ROS_ERROR("panda_controller: Invalid or no joint_names parameters provided, "
                 "aborting controller init!");
       return false;
     }
@@ -48,7 +43,7 @@ namespace main_controller
     auto *model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
     if (model_interface == nullptr)
     {
-      ROS_ERROR_STREAM("MainController: Error getting model interface from hardware");
+      ROS_ERROR_STREAM("panda_controller: Error getting model interface from hardware");
       return false;
     }
     try
@@ -57,7 +52,7 @@ namespace main_controller
     }
     catch (hardware_interface::HardwareInterfaceException &ex)
     {
-      ROS_ERROR_STREAM("MainController: Exception getting model handle from interface: " << ex.what());
+      ROS_ERROR_STREAM("panda_controller: Exception getting model handle from interface: " << ex.what());
       return false;
     }
 
@@ -65,7 +60,7 @@ namespace main_controller
     auto *state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
     if (state_interface == nullptr)
     {
-      ROS_ERROR_STREAM("MainController: Error getting state interface from hardware");
+      ROS_ERROR_STREAM("panda_controller: Error getting state interface from hardware");
       return false;
     }
     try
@@ -74,7 +69,7 @@ namespace main_controller
     }
     catch (hardware_interface::HardwareInterfaceException &ex)
     {
-      ROS_ERROR_STREAM("MainController: Exception getting state handle from interface: " << ex.what());
+      ROS_ERROR_STREAM("panda_controller: Exception getting state handle from interface: " << ex.what());
       return false;
     }
 
@@ -82,7 +77,7 @@ namespace main_controller
     auto *effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
     if (effort_joint_interface == nullptr)
     {
-      ROS_ERROR_STREAM("MainController: Error getting effort joint interface from hardware");
+      ROS_ERROR_STREAM("panda_controller: Error getting effort joint interface from hardware");
       return false;
     }
     for (size_t i = 0; i < 7; ++i)
@@ -93,25 +88,25 @@ namespace main_controller
       }
       catch (const hardware_interface::HardwareInterfaceException &ex)
       {
-        ROS_ERROR_STREAM("MainController: Exception getting joint handles: " << ex.what());
+        ROS_ERROR_STREAM("panda_controller: Exception getting joint handles: " << ex.what());
         return false;
       }
     }
 
     // 动态参数服务
     dynamic_reconfigure_compliance_param_node_ = ros::NodeHandle(node_handle.getNamespace() + "/dynamic_reconfigure_compliance_param_node");
-    dynamic_server_compliance_param_ = std::make_unique<dynamic_reconfigure::Server<main_controller::main_controller_paramConfig>>(dynamic_reconfigure_compliance_param_node_);
-    dynamic_server_compliance_param_->setCallback(boost::bind(&MainController::controlParamCallback, this, _1, _2));
+    dynamic_server_compliance_param_ = std::make_unique<dynamic_reconfigure::Server<panda_controller::panda_controller_paramConfig>>(dynamic_reconfigure_compliance_param_node_);
+    dynamic_server_compliance_param_->setCallback(boost::bind(&PandaController::controlParamCallback, this, _1, _2));
 
     // 发布者对象
-    paramForDebug = node_handle.advertise<main_controller::paramForDebug>("paramForDebug", 20);
+    paramForDebug = node_handle.advertise<panda_controller::paramForDebug>("paramForDebug", 20);
 
     return true;
   }
-  void MainController::starting(const ros::Time & /*time*/)
+  void PandaController::starting(const ros::Time & /*time*/)
   {
-    std::cout << "--------------start1:PandaController--------------" << std::endl;
-    std::cout << "--------------start2:PandaController--------------" << std::endl;
+    std::cout << "--------------start1:panda_controller--------------" << std::endl;
+    std::cout << "--------------start2:panda_controller--------------" << std::endl;
     std::cout << "------编译日期:" << __DATE__ << "------" << std::endl;
     std::cout << "------编译时刻:" << __TIME__ << "------" << std::endl;
 
@@ -119,10 +114,10 @@ namespace main_controller
     Eigen::Matrix<double, 7, 1> q_initial = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
     robotStart(q_initial, 1);
   }
-  void MainController::update(const ros::Time & /*time*/, const ros::Duration &t)
+  void PandaController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
     // 发布数据
-    main_controller::paramForDebug param_debug;
+    panda_controller::paramForDebug param_debug;
 
     franka::RobotState robot_state = state_handle_->getRobotState();
 
@@ -151,7 +146,7 @@ namespace main_controller
     pController->controllerParamRenew();
   }
 
-  Eigen::Matrix<double, 7, 1> MainController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)
+  Eigen::Matrix<double, 7, 1> PandaController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)
   {
     Eigen::Matrix<double, 7, 1> tau_d_saturated{};
     for (size_t i = 0; i < 7; i++)
@@ -162,12 +157,12 @@ namespace main_controller
     return tau_d_saturated;
   }
 
-  void MainController::controlParamCallback(main_controller::main_controller_paramConfig &config, uint32_t /*level*/)
+  void PandaController::controlParamCallback(panda_controller::panda_controller_paramConfig &config, uint32_t /*level*/)
   {
     pController->dynamicSetParameter(config);
   }
 
-} // namespace main_controller
+} // namespace panda_controller
 
-PLUGINLIB_EXPORT_CLASS(main_controller::MainController,
+PLUGINLIB_EXPORT_CLASS(panda_controller::PandaController,
                        controller_interface::ControllerBase)

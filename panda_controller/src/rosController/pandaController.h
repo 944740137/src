@@ -18,17 +18,17 @@
 #include <ros/time.h>
 #include <Eigen/Dense>
 
-#include <main_controller/main_controller_paramConfig.h>
-#include <main_controller/paramForDebug.h>
+#include <panda_controller/panda_controller_paramConfig.h>
+#include <panda_controller/paramForDebug.h>
 
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 
-namespace main_controller
+namespace panda_controller
 {
 
   // 关节空间的动力学控制
-  class MainController : public controller_interface::MultiInterfaceController<
+  class PandaController : public controller_interface::MultiInterfaceController<
                              franka_hw::FrankaModelInterface,
                              hardware_interface::EffortJointInterface,
                              franka_hw::FrankaStateInterface>
@@ -49,9 +49,9 @@ namespace main_controller
 
     // 动态配置参数
     double filter_params{0.005}; // 滤波参数，用于动态调参
-    std::unique_ptr<dynamic_reconfigure::Server<main_controller::main_controller_paramConfig>> dynamic_server_compliance_param_;
+    std::unique_ptr<dynamic_reconfigure::Server<panda_controller::panda_controller_paramConfig>> dynamic_server_compliance_param_;
     ros::NodeHandle dynamic_reconfigure_compliance_param_node_;
-    void controlParamCallback(main_controller::main_controller_paramConfig &config, uint32_t level);
+    void controlParamCallback(panda_controller::panda_controller_paramConfig &config, uint32_t level);
 
     // 发布数据
     ros::Publisher paramForDebug;

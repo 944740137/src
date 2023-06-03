@@ -4,8 +4,9 @@
 #include <fstream>
 #include <iostream>
 #include "robot/robot.hpp"
-#include <main_controller/main_controller_paramConfig.h>
-#include <main_controller/paramForDebug.h>
+
+#include <panda_controller/panda_controller_paramConfig.h>
+#include <panda_controller/paramForDebug.h>
 namespace my_controller
 {
     template <int _Dofs = 7>
@@ -41,9 +42,9 @@ namespace my_controller
 
         // 可重写
         virtual void recordData(my_robot::Robot<_Dofs> *robot);
-        virtual void pubData(main_controller::paramForDebug &param_debug, my_robot::Robot<_Dofs> *robot);
+        virtual void pubData(panda_controller::paramForDebug &param_debug, my_robot::Robot<_Dofs> *robot);
         // 必须重写
-        virtual void dynamicSetParameter(main_controller::main_controller_paramConfig &config) = 0;
+        virtual void dynamicSetParameter(panda_controller::panda_controller_paramConfig &config) = 0;
         virtual bool setControllerLaw(my_robot::Robot<_Dofs> *robot, Eigen::Matrix<double, _Dofs, 1> &tau_d) = 0;
         virtual void calDesire(my_robot::Robot<_Dofs> *robot) = 0;
         virtual void controllerParamRenew() = 0;
@@ -96,7 +97,7 @@ namespace my_controller
         }
     }
     template <int _Dofs>
-    void Controller<_Dofs>::pubData(main_controller::paramForDebug &param_debug, my_robot::Robot<_Dofs> *robot)
+    void Controller<_Dofs>::pubData(panda_controller::paramForDebug &param_debug, my_robot::Robot<_Dofs> *robot)
     {
         for (int i = 0; i < _Dofs; i++)
         {
@@ -137,7 +138,7 @@ namespace my_controller
     public:
         // ComputedTorqueMethod();
         void recordData(my_robot::Robot<_Dofs> *robot);
-        void dynamicSetParameter(main_controller::main_controller_paramConfig &config);
+        void dynamicSetParameter(panda_controller::panda_controller_paramConfig &config);
         bool setControllerLaw(my_robot::Robot<_Dofs> *robot, Eigen::Matrix<double, _Dofs, 1> &tau_d);
         void calDesire(my_robot::Robot<_Dofs> *robot);
         void controllerParamRenew();
@@ -146,7 +147,7 @@ namespace my_controller
     // 计算力矩法
     // 轨迹与控制律计算 保存
     template <int _Dofs>
-    void ComputedTorqueMethod<_Dofs>::dynamicSetParameter(main_controller::main_controller_paramConfig &config)
+    void ComputedTorqueMethod<_Dofs>::dynamicSetParameter(panda_controller::panda_controller_paramConfig &config)
     {
         if (this->time == 0)
         {

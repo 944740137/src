@@ -1,9 +1,9 @@
 #pragma once
+
 #include <algorithm/pinocchino_interactive.h>
-#include <Eigen/Core>
-#include <Eigen/Dense>
-#include <algorithm/pseudo_inversion.h>
+
 extern pinLibInteractive *pinInteractive;
+
 namespace my_robot
 {
     template <int _Dofs = 7>
