@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <algorithm/pseudo_inversion.h>
+extern pinLibInteractive *pinInteractive;
 namespace my_robot
 {
     template <int _Dofs = 7>
@@ -56,7 +57,7 @@ namespace my_robot
 
 }
 
-extern pinLibInteractive *pinInteractive;
+
 
 namespace my_robot
 {
@@ -158,6 +159,7 @@ namespace my_robot
     {
         this->q = q;
         this->dq = dq;
+        this->tau = tau;
         return true;
     }
 
