@@ -3,15 +3,14 @@
 #include <cmath>
 #include <memory>
 
-#include <controller/controller.hpp>
+#include <controller/pandaController.h>
 
 #include <controller_interface/controller_base.h>
 #include <franka/robot_state.h>
 #include <pluginlib/class_list_macros.h>
 
-#include <rosController/pandaController.h>
+#include <rosController/pandaRosController.h>
 #include <ros/ros.h>
-
 
 namespace panda_controller
 {
@@ -22,7 +21,7 @@ namespace panda_controller
     std::cout << "--------------init1:panda_controller--------------" << std::endl;
     std::cout << "--------------init2:panda_controller--------------" << std::endl;
 
-    robotInit();
+    pandaInit();
 
     // 参数服务器
     std::string arm_id;
@@ -107,43 +106,39 @@ namespace panda_controller
   {
     std::cout << "--------------start1:panda_controller--------------" << std::endl;
     std::cout << "--------------start2:panda_controller--------------" << std::endl;
-    std::cout << "------编译日期:" << __DATE__ << "------" << std::endl;
-    std::cout << "------编译时刻:" << __TIME__ << "------" << std::endl;
+    std::cout << "-------------编译日期:" << __DATE__ << "-------------" << std::endl;
+    std::cout << "-------------编译时刻:" << __TIME__ << "-------------" << std::endl;
 
+    // 初值设置
     franka::RobotState initial_state = state_handle_->getRobotState();
     Eigen::Matrix<double, 7, 1> q_initial = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
-    robotStart(q_initial, 1);
+    pandaStart(q_initial, 1);
   }
   void PandaController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
     // 发布数据
     panda_controller::paramForDebug param_debug;
 
+    // 获取传感器数据
     franka::RobotState robot_state = state_handle_->getRobotState();
-
     Eigen::Matrix<double, 7, 1> q = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
     Eigen::Matrix<double, 7, 1> dq = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
     Eigen::Matrix<double, 7, 1> tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
     Eigen::Matrix<double, 7, 1> tau_d;
-
     Eigen::Affine3d transform(Eigen::Matrix4d::Map(robot_state.O_T_EE.data())); // 齐次变换矩阵
     Eigen::Vector3d position(transform.translation());
     Eigen::Quaterniond orientation = Eigen::Quaterniond(transform.rotation());
 
-    robotRun(q, dq, tau_J_d, position, orientation, transform, tau_d);
+    pandaRun(q, dq, tau_J_d, position, orientation, transform, tau_d, param_debug);
 
-    // 平滑命令
+    // 平滑力矩命令并发布
     tau_d << saturateTorqueRate(tau_d, tau_J_d);
     for (size_t i = 0; i < 7; ++i)
     {
       joint_handles_[i].setCommand(tau_d(i)); // 关节句柄设置力矩命令
     }
 
-    pController->pubData(param_debug, pPanda);
-
     paramForDebug.publish(param_debug);
-
-    pController->controllerParamRenew();
   }
 
   Eigen::Matrix<double, 7, 1> PandaController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)

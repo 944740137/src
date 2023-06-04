@@ -76,11 +76,10 @@ catkin_package(
 
 #生成库
 add_library(panda_controller
-  src/rosController/pandaController.cpp
-  # src/robot/myrobot.cpp
+  src/rosController/pandaRosController.cpp
+  src/controller/pandaController.cpp
   src/algorithm/pinocchino_interactive.cpp
-  # src/controller/controller.cpp
-  # src/myrobot.cpp
+
 )
 
 

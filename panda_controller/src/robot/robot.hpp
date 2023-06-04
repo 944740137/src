@@ -172,6 +172,4 @@ namespace my_robot
         return true;
     }
 }
-const int robotDim = 7;
-typedef my_robot::Robot<robotDim> Robot7;
-Robot7 *pPanda = nullptr;
+
