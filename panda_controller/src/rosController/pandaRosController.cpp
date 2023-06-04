@@ -18,8 +18,8 @@ namespace panda_controller
   bool PandaController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
   {
 
-    std::cout << "--------------init1:panda_controller--------------" << std::endl;
-    std::cout << "--------------init2:panda_controller--------------" << std::endl;
+    std::cout << "[robotController] init1:panda_controller" << std::endl;
+    std::cout << "[robotController] init2:panda_controller" << std::endl;
 
     pandaInit();
 
@@ -104,10 +104,10 @@ namespace panda_controller
   }
   void PandaController::starting(const ros::Time & /*time*/)
   {
-    std::cout << "--------------start1:panda_controller--------------" << std::endl;
-    std::cout << "--------------start2:panda_controller--------------" << std::endl;
-    std::cout << "-------------编译日期:" << __DATE__ << "-------------" << std::endl;
-    std::cout << "-------------编译时刻:" << __TIME__ << "-------------" << std::endl;
+    std::cout << "[robotController] start1:panda_controller" << std::endl;
+    std::cout << "[robotController] start2:panda_controller" << std::endl;
+    std::cout << "[robotController] 编译日期:" << __DATE__ << std::endl;
+    std::cout << "[robotController] 编译时刻:" << __TIME__ << std::endl;
 
     // 初值设置
     franka::RobotState initial_state = state_handle_->getRobotState();
@@ -129,7 +129,14 @@ namespace panda_controller
     Eigen::Vector3d position(transform.translation());
     Eigen::Quaterniond orientation = Eigen::Quaterniond(transform.rotation());
 
+    // 获取动力学数据
+    Eigen::Matrix<double, 7, 7> M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(model_handle_->getMass().data());
+    Eigen::Matrix<double, 7, 1> c = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getCoriolis().data());
+    Eigen::Matrix<double, 7, 1> G = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getGravity().data());
+    Eigen::Matrix<double, 6, 7> J = Eigen::Map<Eigen::Matrix<double, 6, 7>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+
     pandaRun(q, dq, tau_J_d, position, orientation, transform, tau_d, param_debug);
+    pandaGetDyn(M, c, G, J);
 
     // 平滑力矩命令并发布
     tau_d << saturateTorqueRate(tau_d, tau_J_d);

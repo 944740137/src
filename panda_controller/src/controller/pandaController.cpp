@@ -54,42 +54,42 @@ void my_controller::ComputedTorqueMethod::recordData(my_robot::Robot<DIM> *robot
     {
         this->myfile.open("/home/wd/ComputedTorqueMethod.txt");
         this->myfile << "ComputedTorqueMethod" << std::endl;
-        this->myfile << "------程序编译日期:" << __DATE__ << "------" << std::endl;
-        this->myfile << "------程序编译时刻:" << __TIME__ << "------" << std::endl;
+        this->myfile << "--------程序编译日期:" << __DATE__ << "--------" << std::endl;
+        this->myfile << "--------程序编译时刻:" << __TIME__ << "--------" << std::endl;
     }
 
-    // this->myfile << "time: " << this->time << "_" << std::endl;
-    // this->myfile << "q0: " << robot->getq0().transpose() << std::endl;
-    // this->myfile << "q: " << robot->getq().transpose() << std::endl;
-    // this->myfile << "dq: " << robot->getdq().transpose() << std::endl;
-    // this->myfile << "q_d: " << this->q_d.transpose() << std::endl;
-    // this->myfile << "dq_d: " << this->dq_d.transpose() << std::endl;
-    // this->myfile << "ddq_d: " << this->ddq_d.transpose() << std::endl;
-    // this->myfile << "Position: " << robot->getPosition().transpose() << std::endl;
+    this->myfile << "time: " << this->time << "_" << std::endl;
+    this->myfile << "q0: " << robot->getq0().transpose() << std::endl;
+    this->myfile << "q: " << robot->getq().transpose() << std::endl;
+    this->myfile << "dq: " << robot->getdq().transpose() << std::endl;
+    this->myfile << "q_d: " << this->q_d.transpose() << std::endl;
+    this->myfile << "dq_d: " << this->dq_d.transpose() << std::endl;
+    this->myfile << "ddq_d: " << this->ddq_d.transpose() << std::endl;
+    this->myfile << "Position: " << robot->getPosition().transpose() << std::endl;
 
-    // this->myfile << "Orientation: " << std::endl;
-    // this->myfile << robot->getOrientation().toRotationMatrix() << std::endl;
+    this->myfile << "Orientation: " << std::endl;
+    this->myfile << robot->getOrientation().toRotationMatrix() << std::endl;
 
-    // this->myfile << "T: " << std::endl;
-    // this->myfile << robot->getT().matrix() << std::endl;
-    // this->myfile << "M: " << std::endl;
-    // this->myfile << robot->getM() << std::endl;
-    // this->myfile << "C: " << std::endl;
-    // this->myfile << robot->getC() * robot->getdq() << std::endl;
-    // this->myfile << "G: " << std::endl;
-    // this->myfile << robot->getG() << std::endl;
+    this->myfile << "T: " << std::endl;
+    this->myfile << robot->getT().matrix() << std::endl;
+    this->myfile << "M: " << std::endl;
+    this->myfile << robot->getM() << std::endl;
+    this->myfile << "C: " << std::endl;
+    this->myfile << robot->getC() * robot->getdq() << std::endl;
+    this->myfile << "G: " << std::endl;
+    this->myfile << robot->getG() << std::endl;
 
-    // this->myfile << "Kp: " << std::endl;
-    // this->myfile << Kv << std::endl;
-    // this->myfile << "Kv: " << std::endl;
-    // this->myfile << Kp << std::endl;
+    this->myfile << "Kp: " << std::endl;
+    this->myfile << Kv << std::endl;
+    this->myfile << "Kv: " << std::endl;
+    this->myfile << Kp << std::endl;
 
-    // this->myfile << "J: " << std::endl;
-    // this->myfile << robot->getJ() << std::endl;
-    // this->myfile << "qc: " << this->qc.transpose() << std::endl;
+    this->myfile << "J: " << std::endl;
+    this->myfile << robot->getJ() << std::endl;
+    this->myfile << "qc: " << this->qc.transpose() << std::endl;
 
-    // this->myfile << "getTorque: " << robot->getTorque().transpose() << std::endl;
-    // this->myfile << "tau_d: " << this->tau_d.transpose() << std::endl;
+    this->myfile << "getTorque: " << robot->getTorque().transpose() << std::endl;
+    this->myfile << "tau_d: " << this->tau_d.transpose() << std::endl;
     this->myfile << "-------------------" << std::endl;
 }
 void my_controller::ComputedTorqueMethod::pubData(panda_controller::paramForDebug &param_debug, my_robot::Robot<DIM> *robot)
@@ -119,6 +119,13 @@ void my_controller::ComputedTorqueMethod::pubData(panda_controller::paramForDebu
 Robot7 *pPanda = nullptr;
 Robot7Controller *pController = nullptr;
 
+
+/***/
+/***/
+/***/
+/***/
+/***/
+/***/
 void pandaRun(Eigen::Matrix<double, DIM, 1> q, Eigen::Matrix<double, DIM, 1> dq, Eigen::Matrix<double, DIM, 1> tau, Eigen::Vector3d position, Eigen::Quaterniond orientation, Eigen::Affine3d TO2E, Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug)
 {
     pController->updateTime();
@@ -143,9 +150,13 @@ void pandaRun(Eigen::Matrix<double, DIM, 1> q, Eigen::Matrix<double, DIM, 1> dq,
 
 void pandaInit()
 {
-    if (pinInteractive == nullptr)
+    // if (pinInteractive == nullptr)
+    // {
+    //     pinInteractive = new pinLibInteractive();
+    // }
+    if (pPandaDynLibManager == nullptr)
     {
-        pinInteractive = new pinLibInteractive();
+        pPandaDynLibManager = new pandaDynLibManager();
     }
     if (pController == nullptr)
     {
@@ -161,4 +172,12 @@ void pandaStart(Eigen::Matrix<double, DIM, 1> q0, int recordPeriod)
 {
     pController->setRecord(recordPeriod);
     pPanda->setq0(q0);
+}
+
+void pandaGetDyn(Eigen::Matrix<double, 7, 7> M,Eigen::Matrix<double, 7, 1> c,Eigen::Matrix<double, 7, 1> G,Eigen::Matrix<double, 6, 7> J)
+{
+    pPanda->setExternM(M);
+    pPanda->setExternc(c);
+    pPanda->setExternG(G);
+    pPanda->setExternJ(J);
 }

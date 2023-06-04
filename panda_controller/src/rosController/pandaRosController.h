@@ -29,9 +29,9 @@ namespace panda_controller
 
   // 关节空间的动力学控制
   class PandaController : public controller_interface::MultiInterfaceController<
-                             franka_hw::FrankaModelInterface,
-                             hardware_interface::EffortJointInterface,
-                             franka_hw::FrankaStateInterface>
+                              franka_hw::FrankaModelInterface,
+                              hardware_interface::EffortJointInterface,
+                              franka_hw::FrankaStateInterface>
   {
   public:
     bool init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle) override;
@@ -55,6 +55,8 @@ namespace panda_controller
 
     // 发布数据
     ros::Publisher paramForDebug;
+
+
   };
 
 } // namespace franka_example_controllers

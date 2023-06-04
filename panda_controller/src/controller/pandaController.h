@@ -2,7 +2,7 @@
 #include <panda_controller/panda_controller_paramConfig.h>
 #include <panda_controller/paramForDebug.h>
 
-#define DIM 7
+// #define DIM 7
 typedef my_robot::Robot<DIM> Robot7;
 typedef my_controller::Controller<DIM, panda_controller::paramForDebug, panda_controller::panda_controller_paramConfig> Robot7Controller;
 
@@ -35,3 +35,4 @@ extern Robot7Controller *pController;
 void pandaInit();
 void pandaStart(Eigen::Matrix<double, DIM, 1> q0, int recordPeriod);
 void pandaRun(Eigen::Matrix<double, DIM, 1> q, Eigen::Matrix<double, DIM, 1> dq, Eigen::Matrix<double, DIM, 1> tau, Eigen::Vector3d position, Eigen::Quaterniond orientation, Eigen::Affine3d TO2E, Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug);
+void pandaGetDyn(Eigen::Matrix<double, 7, 7> M,Eigen::Matrix<double, 7, 1> C,Eigen::Matrix<double, 7, 1> G,Eigen::Matrix<double, 6, 7> J);

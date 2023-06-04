@@ -78,8 +78,7 @@ catkin_package(
 add_library(panda_controller
   src/rosController/pandaRosController.cpp
   src/controller/pandaController.cpp
-  src/algorithm/pinocchino_interactive.cpp
-
+  src/algorithm/pandaDynLibManager.cpp
 )
 
 
