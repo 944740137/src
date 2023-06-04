@@ -48,7 +48,7 @@ namespace franka_example_controllers
     double filter_params{0.001};     // 滤波参数，用于动态调参
     const double delta_tau_max{1.0}; // 最大力矩变化值
     bool firstUpdate = true;         // 用于判断是不是第一个控制周期，计算雅可比导数。
-
+    bool firstCallback = true;
     // 用于计算关节空间期望轨迹
     ros::Duration elapsed_time;
 
@@ -75,6 +75,9 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> S1_dot;
     Eigen::Matrix<double, 7, 1> S2;
     Eigen::Matrix<double, 7, 1> S2_dot;
+    // 命令
+    Eigen::Matrix<double, 7, 1> tau_d;
+    Eigen::Matrix<double, 7, 1> qc;
 
     double KGPp1 = 1.0;
     double KGPp2 = 1.0;
@@ -84,6 +87,7 @@ namespace franka_example_controllers
     double KGPp2_d = 1.0;
     double KGPv1_d = 1.0;
     double KGPv2_d = 1.0;
+    int tmpGP = 1;
 
     // 动态配置参数
     std::unique_ptr<dynamic_reconfigure::Server<franka_example_controllers::dynamic_control_paramConfig>> dynamic_server_compliance_param_;
@@ -98,16 +102,12 @@ namespace franka_example_controllers
     std::ofstream myfile;
     ros::Publisher paramForDebug;
 
-    // pin
-    // pinocchioLib lib_;
-    // pinocchio::Model pinModel;
-    // pinocchio::Data pPinData;
-
     // GP
     Mat<REAL> Xtr;
     Row<REAL> Ytr1;
     Row<REAL> Ytr2;
     Mat<REAL> Utr;
+
   };
 
   // 笛卡尔空间的动力学控制
