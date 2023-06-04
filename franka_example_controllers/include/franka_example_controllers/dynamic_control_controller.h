@@ -67,7 +67,7 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> dq_d;
     Eigen::Matrix<double, 7, 1> ddq_d;
     Eigen::Matrix<double, 7, 1> q_initial;
-
+    Eigen::Matrix<double, 7, 1> q_error;
     // old ddq
     Eigen::Matrix<double, 7, 1> dq_old;
     Eigen::Matrix<double, 7, 1> ddq;

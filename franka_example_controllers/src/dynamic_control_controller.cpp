@@ -38,6 +38,7 @@ long get_system_time_microsecond()
   else
     return 0;
 }
+
 // extern pinLibInteractive *pinInteractive;
 namespace franka_example_controllers
 {
@@ -168,14 +169,15 @@ namespace franka_example_controllers
              << std::endl;
       // firstUpdate = false;
     }
-    int axis1 = 3 - 1;
-    int axis2 = 4 - 1;
+    int axis1 = 2 - 1;
+    int axis2 = 3 - 1;
     // 期望轨迹生成
     elapsed_time += t;
     double part = 2.0;
     double delta_angle = M_PI / 16 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * part;
     double dot_delta_angle = M_PI / 16 * M_PI / 5.0 * (std::sin(M_PI / 5.0 * elapsed_time.toSec())) * part;
     double ddot_delta_angle = M_PI / 16 * M_PI / 5.0 * M_PI / 5.0 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * part;
+    q_error << 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05;
     for (size_t i = 0; i < 7; ++i)
     {
       // if (i == 4)
@@ -195,7 +197,7 @@ namespace franka_example_controllers
       ddq_d[i] = 0;
       if (i == axis1 || i == axis2) // wd
       {
-        q_d[i] = q_initial[i] + delta_angle;
+        q_d[i] = q_initial[i] + q_error[i] + delta_angle;
         dq_d[i] = dot_delta_angle;
         ddq_d[i] = ddot_delta_angle;
       }
@@ -288,7 +290,7 @@ namespace franka_example_controllers
     SqExpKernel kernel2(kernel_param);
     ConstantMean mean2("0,2,3");
     static GP gp2(1, &kernel2, &mean2);
-
+    int rate = 20;
     if (time % 1 == 0 || time == 1) // wq
     {
       Ytr1 = S1_dot(axis1); // wd
@@ -325,7 +327,7 @@ namespace franka_example_controllers
       {
         // long tmp1 = get_system_time_microsecond();
         // std::cout << "--------------else--------------" << std::endl;
-        if (time % 5 == 0 || time == 2)
+        if (time % rate == 0 || time == 2)
         {
 
           // std::cout << "--------------if 1--------------" << std::endl;
@@ -337,7 +339,7 @@ namespace franka_example_controllers
         // std::cout << gp.GetTrainingData() << std::endl;
         gp.Predict(X, hatf1, hatg11, hatg12);
         // std::cout << "--------------else 1 --------------" << std::endl;
-        if (time % 5 == 0 || time == 2)
+        if (time % rate == 0 || time == 2)
         {
           // std::cout << "--------------if 2--------------" << std::endl;
           gp2.AddTraining(Xtr, Ytr2, Utr);
@@ -408,6 +410,8 @@ namespace franka_example_controllers
     // tau_d << inertiaMatrix2 * dr + coriolisMatrix * dr + K2 * error2 + K1 * derror; /* + G */
     // 小练-------------------------------------------------------------------
     // tau_d << inertiaMatrix1 * (Kp * error + Kv * derror); /* + G */
+    tau_d(axis1) = tau_d(axis1) - G_(axis1); // wd ///wq
+    tau_d(axis2) = tau_d(axis2) - G_(axis2);
 
     tau_d(axis1) = myu(0); // wd ///wq
     tau_d(axis2) = myu(1);

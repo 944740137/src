@@ -6,7 +6,7 @@ using namespace std;
 #include "GP.h"
 #include "CGOptimizer.h"
 #include "armadillo_backsub.h"
-int mycount = 5;
+int mycount = 20;
 GP::GP(REAL s2_n, KernelFunction *kernel, MeanFunction *mean)
 {
   this->kernel = kernel;
