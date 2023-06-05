@@ -40,7 +40,7 @@ PinocchioDynLibManager<_Dofs>::PinocchioDynLibManager()
     static pinocchio::Model model;
     static pinocchio::Data data;
     std::string urdf = std::string("/home/wd/franka_ros/3_workspace/src/franka_description/robots/panda/panda_withoutHand.urdf");
-    std::cout << "[robotController] pinocchino动力学库加载：" << urdf << " 文件" << std::endl;
+    std::cout << "[robotController] pinocchino动力学库加载urdf：" << urdf << " 文件" << std::endl;
     pinocchio::urdf::buildModel(urdf, model);
     pModel = &model;
     data = pinocchio::Data(model);

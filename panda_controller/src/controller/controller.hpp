@@ -5,7 +5,7 @@
 #include <iostream>
 #include "robot/robot.hpp"
 
-namespace my_controller
+namespace robot_controller
 {
     template <int _Dofs, typename pubDataType, typename dynParamType>
     class Controller
@@ -84,17 +84,38 @@ namespace my_controller
             return;
         if (time == 1)
         {
-            myfile.open("/home/wd/Controller.txt");
-            myfile << "Controller" << std::endl;
+            this->myfile.open("/home/wd/pandaController.txt");
+            this->myfile << "pandaController" << std::endl;
+            this->myfile << "--------程序编译日期:" << __DATE__ << "--------" << std::endl;
+            this->myfile << "--------程序编译时刻:" << __TIME__ << "--------" << std::endl;
         }
-        else
-        {
-            myfile << "time: " << this->time << "_" << std::endl;
-            myfile << "q: " << robot->getq().transpose() << std::endl;
-            myfile << "dq: " << robot->getdq().transpose() << std::endl;
-            myfile << "q_d: " << q_d.transpose() << std::endl;
-            myfile << "dq_d: " << dq_d.transpose() << std::endl;
-        }
+
+        this->myfile << "time: " << this->time << "_" << std::endl;
+        this->myfile << "q0: " << robot->getq0().transpose() << std::endl;
+        this->myfile << "q: " << robot->getq().transpose() << std::endl;
+        this->myfile << "dq: " << robot->getdq().transpose() << std::endl;
+        this->myfile << "q_d: " << this->q_d.transpose() << std::endl;
+        this->myfile << "dq_d: " << this->dq_d.transpose() << std::endl;
+        this->myfile << "ddq_d: " << this->ddq_d.transpose() << std::endl;
+
+        this->myfile << "Position: " << robot->getPosition().transpose() << std::endl;
+        this->myfile << "Orientation: " << std::endl;
+        this->myfile << robot->getOrientation().toRotationMatrix().eulerAngles(2,1,0) << std::endl;
+        this->myfile << "T: " << std::endl;
+        this->myfile << robot->getT().matrix() << std::endl;
+
+        this->myfile << "M: " << std::endl;
+        this->myfile << robot->getM() << std::endl;
+        this->myfile << "C: " << std::endl;
+        this->myfile << robot->getC() * robot->getdq() << std::endl;
+        this->myfile << "G: " << std::endl;
+        this->myfile << robot->getG() << std::endl;
+        this->myfile << "J: " << std::endl;
+        this->myfile << robot->getJ() << std::endl;
+
+        this->myfile << "getTorque: " << robot->getTorque().transpose() << std::endl;
+        this->myfile << "tau_d: " << this->tau_d.transpose() << std::endl;
+        this->myfile << "-------------------" << std::endl;
     }
 
 };

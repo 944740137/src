@@ -77,8 +77,9 @@ catkin_package(
 #生成库
 add_library(panda_controller
   src/rosController/pandaRosController.cpp
-  src/controller/pandaController.cpp
   src/algorithm/pandaDynLibManager.cpp
+  src/controller/pandaController.cpp
+  src/controller/computedTorqueMethod.cpp
 )
 
 
