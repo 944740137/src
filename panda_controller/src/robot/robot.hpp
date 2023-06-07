@@ -15,39 +15,51 @@ namespace my_robot
         Eigen::Matrix<double, _Dofs, 1> q0;
         Eigen::Matrix<double, _Dofs, 1> q;
         Eigen::Matrix<double, _Dofs, 1> dq;
-        Eigen::Matrix<double, _Dofs, 1> tau;
 
+        Eigen::Vector3d position0;
+        Eigen::Quaterniond orientation0;
         Eigen::Vector3d position;
         Eigen::Quaterniond orientation;
+        Eigen::Vector3d dposition;
+        Eigen::Quaterniond dorientation;
+
         Eigen::Affine3d TO2E;
+        Eigen::Matrix<double, _Dofs, 1> tau;
 
         // pino
         Eigen::Matrix<double, _Dofs, _Dofs> C;
         Eigen::Matrix<double, _Dofs, _Dofs> M;
         Eigen::Matrix<double, _Dofs, 1> G;
         Eigen::Matrix<double, _Dofs * 10, _Dofs> Y;
-
         Eigen::Matrix<double, 6, _Dofs> J;
         Eigen::Matrix<double, _Dofs, 6> J_inv;
-        Eigen::Matrix<double, 6, _Dofs> dJ;
 
         // panda
-        Eigen::Matrix<double, 7, 1> externc;//科氏项,非矩阵
+        Eigen::Matrix<double, 7, 1> externc; // 科氏项,非矩阵
         Eigen::Matrix<double, 7, 7> externM;
         Eigen::Matrix<double, 7, 1> externG;
         Eigen::Matrix<double, 6, 7> externJ;
 
+        // 加权伪逆
+        Eigen::Matrix<double, 6, _Dofs> dJ;
+
     public:
+        // get
         Eigen::Matrix<double, _Dofs, 1> getq0();
         Eigen::Matrix<double, _Dofs, 1> getq();
         Eigen::Matrix<double, _Dofs, 1> getdq();
-        Eigen::Matrix<double, _Dofs, 1> getTorque();
+        Eigen::Vector3d getPosition0();
+        Eigen::Quaterniond getOrientation0();
         Eigen::Vector3d getPosition();
         Eigen::Quaterniond getOrientation();
+        Eigen::Vector3d getdPosition();
+        Eigen::Quaterniond getdOrientation();
         Eigen::Affine3d getT();
+        Eigen::Matrix<double, _Dofs, 1> getTorque();
 
         // set
         bool setq0(Eigen::Matrix<double, _Dofs, 1> q);
+        bool setPosAndOri0(Eigen::Vector3d position, Eigen::Quaterniond orientation);
         bool updateJointData(Eigen::Matrix<double, _Dofs, 1> q, Eigen::Matrix<double, _Dofs, 1> dq, Eigen::Matrix<double, _Dofs, 1> tau);
         bool updateEndeffectorData(Eigen::Vector3d position, Eigen::Quaterniond orientation, Eigen::Affine3d TO2E);
 
@@ -57,13 +69,14 @@ namespace my_robot
         bool setExternG(Eigen::Matrix<double, _Dofs, 1> externG);
         bool setExternJ(Eigen::Matrix<double, 6, _Dofs> externJ);
         Eigen::Matrix<double, _Dofs, _Dofs> getExternM();
-        Eigen::Matrix<double, _Dofs, 1> getExternc();//科氏项
+        Eigen::Matrix<double, _Dofs, 1> getExternc(); // 科氏项
         Eigen::Matrix<double, _Dofs, 1> getExternG();
         Eigen::Matrix<double, 6, _Dofs> getExternJ();
 
         // pinocchino dyn api
         bool calculation(Eigen::Matrix<double, _Dofs, 1> ddq_d);
         Eigen::Matrix<double, 6, _Dofs> getJ();
+        Eigen::Matrix<double, _Dofs, 6> getJ_inv();
         Eigen::Matrix<double, _Dofs, _Dofs> getM();
         Eigen::Matrix<double, _Dofs, _Dofs> getC();
         Eigen::Matrix<double, _Dofs, 1> getG();
@@ -79,12 +92,7 @@ namespace my_robot
     {
         return this->q0;
     }
-    template <int _Dofs>
-    bool Robot<_Dofs>::setq0(Eigen::Matrix<double, _Dofs, 1> q)
-    {
-        this->q0 = q;
-        return true;
-    }
+
     template <int _Dofs>
     Eigen::Matrix<double, _Dofs, 1> Robot<_Dofs>::getq()
     {
@@ -96,11 +104,15 @@ namespace my_robot
     {
         return this->dq;
     }
-
     template <int _Dofs>
-    Eigen::Matrix<double, _Dofs, 1> Robot<_Dofs>::getTorque()
+    Eigen::Vector3d Robot<_Dofs>::getPosition0()
     {
-        return this->tau;
+        return this->position0;
+    }
+    template <int _Dofs>
+    Eigen::Quaterniond Robot<_Dofs>::getOrientation0()
+    {
+        return this->orientation0;
     }
     template <int _Dofs>
     Eigen::Vector3d Robot<_Dofs>::getPosition()
@@ -113,11 +125,39 @@ namespace my_robot
         return this->orientation;
     }
     template <int _Dofs>
+    Eigen::Vector3d Robot<_Dofs>::getdPosition()
+    {
+        return this->dposition;
+    }
+    template <int _Dofs>
+    Eigen::Quaterniond Robot<_Dofs>::getdOrientation()
+    {
+        return this->dorientation;
+    }
+    template <int _Dofs>
     Eigen::Affine3d Robot<_Dofs>::getT()
     {
         return this->TO2E;
     }
+    template <int _Dofs>
+    Eigen::Matrix<double, _Dofs, 1> Robot<_Dofs>::getTorque()
+    {
+        return this->tau;
+    }
 
+    template <int _Dofs>
+    bool Robot<_Dofs>::setq0(Eigen::Matrix<double, _Dofs, 1> q)
+    {
+        this->q0 = q;
+        return true;
+    }
+    template <int _Dofs>
+    bool Robot<_Dofs>::setPosAndOri0(Eigen::Vector3d position0, Eigen::Quaterniond orientation0)
+    {
+        this->position0 = position0;
+        this->orientation0 = orientation0;
+        return true;
+    }
     template <int _Dofs>
     bool Robot<_Dofs>::updateJointData(Eigen::Matrix<double, _Dofs, 1> q, Eigen::Matrix<double, _Dofs, 1> dq, Eigen::Matrix<double, _Dofs, 1> tau)
     {
@@ -126,12 +166,16 @@ namespace my_robot
         this->tau = tau;
         return true;
     }
-
     template <int _Dofs>
     bool Robot<_Dofs>::updateEndeffectorData(Eigen::Vector3d position, Eigen::Quaterniond orientation, Eigen::Affine3d TO2E)
     {
         this->position = position;
         this->orientation = orientation;
+
+        this->dposition = (externJ * dq).head(3);
+        Eigen::Matrix<double, 3, 1> tmp = (externJ * dq).tail(3); // 欧拉角
+        this->dorientation = Eigen::AngleAxisd(tmp[0], Eigen::Vector3d::UnitX()) * Eigen::AngleAxisd(tmp[1], Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(tmp[2], Eigen::Vector3d::UnitZ());
+
         this->TO2E = TO2E;
         return true;
     }
@@ -156,6 +200,11 @@ namespace my_robot
     Eigen::Matrix<double, 6, _Dofs> Robot<_Dofs>::getJ()
     {
         return this->J;
+    }
+    template <int _Dofs>
+    Eigen::Matrix<double, _Dofs, 6> Robot<_Dofs>::getJ_inv()
+    {
+        return this->J_inv;
     }
 
     template <int _Dofs>

@@ -112,7 +112,10 @@ namespace panda_controller
     // 初值设置
     franka::RobotState initial_state = state_handle_->getRobotState();
     Eigen::Matrix<double, 7, 1> q_initial = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
-    pandaStart(q_initial, 1);
+    Eigen::Affine3d transform(Eigen::Matrix4d::Map(initial_state.O_T_EE.data())); // 齐次变换矩阵
+    Eigen::Vector3d position(transform.translation());
+    Eigen::Quaterniond orientation = Eigen::Quaterniond(transform.rotation());
+    pandaStart(q_initial, position, orientation, 1);
   }
   void PandaController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
@@ -135,8 +138,8 @@ namespace panda_controller
     Eigen::Matrix<double, 7, 1> G = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getGravity().data());
     Eigen::Matrix<double, 6, 7> J = Eigen::Map<Eigen::Matrix<double, 6, 7>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 
-    pandaRun(q, dq, tau_J_d, position, orientation, transform, tau_d, param_debug);
     pandaGetDyn(M, c, G, J);
+    pandaRun(q, dq, tau_J_d, position, orientation, transform, tau_d, param_debug);
 
     // 平滑力矩命令并发布
     tau_d << saturateTorqueRate(tau_d, tau_J_d);

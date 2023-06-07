@@ -21,6 +21,7 @@ namespace robot_controller
         Eigen::Matrix<double, _Dofs, 1> jointError;
         Eigen::Matrix<double, _Dofs, 1> djointError;
         Eigen::Matrix<double, 6, 1> cartesianError;
+        Eigen::Matrix<double, 6, 1> dcartesianError;
 
         // controllerLaw
         Eigen::Matrix<double, _Dofs, 1> tau_d;
@@ -30,8 +31,14 @@ namespace robot_controller
         Eigen::Matrix<double, _Dofs, 1> q_d;
         Eigen::Matrix<double, _Dofs, 1> dq_d;
         Eigen::Matrix<double, _Dofs, 1> ddq_d;
+
         Eigen::Vector3d position_d;
         Eigen::Quaterniond orientation_d;
+
+        Eigen::Vector3d dposition_d;
+        Eigen::Quaterniond dorientation_d;
+
+        Eigen::Matrix<double, 6, 1> ddX_d; // position+orientation
 
     public:
         // 无需重写
@@ -45,7 +52,7 @@ namespace robot_controller
         // 必须重写
         virtual void dynamicSetParameter(dynParamType &config) = 0;
         virtual void pubData(pubDataType &param_debug, my_robot::Robot<_Dofs> *robot) = 0;
-        virtual bool setControllerLaw(my_robot::Robot<_Dofs> *robot, Eigen::Matrix<double, _Dofs, 1> &tau_d) = 0;
+        virtual void setControllerLaw(my_robot::Robot<_Dofs> *robot, Eigen::Matrix<double, _Dofs, 1> &tau_d) = 0;
         virtual void calDesire(my_robot::Robot<_Dofs> *robot) = 0;
         virtual void controllerParamRenew() = 0;
     };
@@ -53,16 +60,30 @@ namespace robot_controller
     template <int _Dofs, typename pubDataType, typename dynParamType>
     void Controller<_Dofs, pubDataType, dynParamType>::calError(my_robot::Robot<_Dofs> *robot)
     {
+        // 关节误差与误差导数
         this->jointError = q_d - robot->getq();
         this->djointError = dq_d - robot->getdq();
 
+        // 笛卡尔位姿误差
+        Eigen::Quaterniond orientation = robot->getOrientation();
         this->cartesianError.head(3) = position_d - robot->getPosition();
-        if (orientation_d.coeffs().dot(robot->getOrientation().coeffs()) < 0.0)
+        if (this->orientation_d.coeffs().dot(orientation.coeffs()) < 0.0)
         {
-            robot->getOrientation().coeffs() << -robot->getOrientation().coeffs();
+            orientation.coeffs() << -orientation.coeffs();
         }
-        Eigen::Quaterniond error_quaternion(robot->getOrientation().inverse() * orientation_d);
+        Eigen::Quaterniond error_quaternion(orientation.inverse() * this->orientation_d);
         this->cartesianError.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
+        this->cartesianError.tail(3) << robot->getT().rotation() * this->cartesianError.tail(3);
+
+        // 笛卡尔位姿误差导数
+        Eigen::Quaterniond dorientation = robot->getdOrientation();
+        this->dcartesianError.head(3) = dposition_d - robot->getdPosition();
+        if (dorientation_d.coeffs().dot(dorientation.coeffs()) < 0.0)
+        {
+            dorientation.coeffs() << -dorientation.coeffs();
+        }
+        Eigen::Quaterniond derror_quaternion(dorientation.inverse() * dorientation_d);
+        this->cartesianError.tail(3) << derror_quaternion.x(), derror_quaternion.y(), derror_quaternion.z();
         this->cartesianError.tail(3) << robot->getT().rotation() * this->cartesianError.tail(3);
     }
     template <int _Dofs, typename pubDataType, typename dynParamType>
@@ -98,23 +119,26 @@ namespace robot_controller
         this->myfile << "dq_d: " << this->dq_d.transpose() << std::endl;
         this->myfile << "ddq_d: " << this->ddq_d.transpose() << std::endl;
 
+        this->myfile << "Position0: " << robot->getPosition0().transpose() << std::endl;
+        this->myfile << "Orientation0: " << robot->getOrientation0().toRotationMatrix().eulerAngles(2, 1, 0).transpose() << std::endl;
         this->myfile << "Position: " << robot->getPosition().transpose() << std::endl;
-        this->myfile << "Orientation: " << std::endl;
-        this->myfile << robot->getOrientation().toRotationMatrix().eulerAngles(2,1,0) << std::endl;
-        this->myfile << "T: " << std::endl;
-        this->myfile << robot->getT().matrix() << std::endl;
+        this->myfile << "Orientation: " << robot->getOrientation().toRotationMatrix().eulerAngles(2, 1, 0).transpose() << std::endl;
+        this->myfile << "Position: " << robot->getdPosition().transpose() << std::endl;
+        this->myfile << "Orientation: " << robot->getdOrientation().toRotationMatrix().eulerAngles(2, 1, 0).transpose() << std::endl;
+        // this->myfile << "T: " << std::endl;
+        // this->myfile << robot->getT().matrix() << std::endl;
 
-        this->myfile << "M: " << std::endl;
-        this->myfile << robot->getM() << std::endl;
-        this->myfile << "C: " << std::endl;
-        this->myfile << robot->getC() * robot->getdq() << std::endl;
-        this->myfile << "G: " << std::endl;
-        this->myfile << robot->getG() << std::endl;
-        this->myfile << "J: " << std::endl;
-        this->myfile << robot->getJ() << std::endl;
+        // this->myfile << "M: " << std::endl;
+        // this->myfile << robot->getM() << std::endl;
+        // this->myfile << "C: " << std::endl;
+        // this->myfile << robot->getC() * robot->getdq() << std::endl;
+        // this->myfile << "G: " << std::endl;
+        // this->myfile << robot->getG() << std::endl;
+        // this->myfile << "J: " << std::endl;
+        // this->myfile << robot->getJ() << std::endl;
 
-        this->myfile << "getTorque: " << robot->getTorque().transpose() << std::endl;
-        this->myfile << "tau_d: " << this->tau_d.transpose() << std::endl;
+        // this->myfile << "getTorque: " << robot->getTorque().transpose() << std::endl;
+        // this->myfile << "tau_d: " << this->tau_d.transpose() << std::endl;
         this->myfile << "-------------------" << std::endl;
     }
 

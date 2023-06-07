@@ -33,7 +33,7 @@ void pandaInit()
     }
     if (pController == nullptr)
     {
-        pController = new panda_controller::ComputedTorqueMethod();
+        pController = new panda_controller::ComputedTorqueMethod(TaskSpace::jointSpace);
     }
     if (pPanda == nullptr)
     {
@@ -41,10 +41,11 @@ void pandaInit()
     }
 }
 
-void pandaStart(Eigen::Matrix<double, DIM, 1> q0, int recordPeriod)
+void pandaStart(Eigen::Matrix<double, DIM, 1> q0, Eigen::Vector3d position, Eigen::Quaterniond orientation, int recordPeriod)
 {
     pController->setRecord(recordPeriod);
     pPanda->setq0(q0);
+    pPanda->setPosAndOri0(position, orientation);
 }
 
 void pandaGetDyn(Eigen::Matrix<double, 7, 7> M, Eigen::Matrix<double, 7, 1> c, Eigen::Matrix<double, 7, 1> G, Eigen::Matrix<double, 6, 7> J)
