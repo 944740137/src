@@ -78,8 +78,11 @@ catkin_package(
 add_library(panda_controller
   src/rosController/pandaRosController.cpp
   src/algorithm/pandaDynLibManager.cpp
-  src/controller/pandaController.cpp
-  src/controller/computedTorqueMethod.cpp
+  src/robotController/pandaController.cpp
+  src/controllerLaw/computedTorqueMethod.cpp
+  src/controllerLaw/backstepping.cpp
+  src/controllerLaw/PD.cpp
+
 )
 
 

@@ -3,7 +3,7 @@
 #include <cmath>
 #include <memory>
 
-#include <controller/pandaController.h>
+#include <robotController/pandaController.h>
 
 #include <controller_interface/controller_base.h>
 #include <franka/robot_state.h>

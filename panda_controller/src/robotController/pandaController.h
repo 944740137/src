@@ -1,7 +1,7 @@
 #ifndef PANDA_CONTROLLER
 #define PANDA_CONTROLLER
 
-#include <controller/controller.hpp>
+#include "controller.hpp"
 #include <trajectory/trajectory.hpp>
 #include <panda_controller/panda_controller_paramConfig.h>
 #include <panda_controller/paramForDebug.h>
@@ -19,7 +19,7 @@ typedef robot_controller::Controller<DIM, panda_controller::paramForDebug, panda
 namespace panda_controller
 {
     //**//
-    // 关节空间计算力矩控制器
+    // 计算力矩控制器
     class ComputedTorqueMethod : public robot_controller::Controller<DIM, panda_controller::paramForDebug, panda_controller::panda_controller_paramConfig>
     {
     public:
@@ -52,7 +52,67 @@ namespace panda_controller
     // 反步控制器
     class Backstepping : public robot_controller::Controller<DIM, panda_controller::paramForDebug, panda_controller::panda_controller_paramConfig>
     {
+        TaskSpace taskSpace;
+        // 关节空间
+        Eigen::Matrix<double, DIM, DIM> jointK1;
+        Eigen::Matrix<double, DIM, DIM> jointK2;
+
+        Eigen::Matrix<double, DIM, DIM> jointK1_d;
+        Eigen::Matrix<double, DIM, DIM> jointK2_d;
+
+        // 笛卡尔空间
+        Eigen::Matrix<double, 6, 6> cartesianK1;
+        Eigen::Matrix<double, 6, 6> cartesianK2;
+
+        Eigen::Matrix<double, 6, 6> cartesianK1_d;
+        Eigen::Matrix<double, 6, 6> cartesianK2_d;
+
+        // 误差中间变量
+        Eigen::Matrix<double, 7, 1> e1;
+        Eigen::Matrix<double, 7, 1> e2;
+        Eigen::Matrix<double, 7, 1> r;
+        Eigen::Matrix<double, 7, 1> dr;
+
+    public:
+        Backstepping(TaskSpace taskSpace);
+        void calDesire(my_robot::Robot<DIM> *robot);
+        void setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d);
+
+        void dynamicSetParameter(panda_controller::panda_controller_paramConfig &config);
+        void controllerParamRenew();
+        void pubData(panda_controller::paramForDebug &param_debug, my_robot::Robot<DIM> *robot);
     };
+
+    //**//
+    // PD+重力补偿
+    class PD : public robot_controller::Controller<DIM, panda_controller::paramForDebug, panda_controller::panda_controller_paramConfig>
+    {
+    public:
+        TaskSpace taskSpace;
+        // 关节空间
+        Eigen::Matrix<double, DIM, DIM> jointKv;
+        Eigen::Matrix<double, DIM, DIM> jointKp;
+
+        Eigen::Matrix<double, DIM, DIM> jointKv_d;
+        Eigen::Matrix<double, DIM, DIM> jointKp_d;
+
+        // 笛卡尔空间
+        Eigen::Matrix<double, 6, 6> cartesianKp;
+        Eigen::Matrix<double, 6, 6> cartesianKv;
+
+        Eigen::Matrix<double, 6, 6> cartesianKp_d;
+        Eigen::Matrix<double, 6, 6> cartesianKv_d;
+
+    public:
+        PD(TaskSpace taskSpace);
+        void calDesire(my_robot::Robot<DIM> *robot);
+        void setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d);
+
+        void dynamicSetParameter(panda_controller::panda_controller_paramConfig &config);
+        void controllerParamRenew();
+        void pubData(panda_controller::paramForDebug &param_debug, my_robot::Robot<DIM> *robot);
+    };
+
     //**//
     // 回零控制器
     class MoveZero : public robot_controller::Controller<DIM, panda_controller::paramForDebug, panda_controller::panda_controller_paramConfig>

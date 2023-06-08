@@ -33,7 +33,9 @@ void pandaInit()
     }
     if (pController == nullptr)
     {
-        pController = new panda_controller::ComputedTorqueMethod(TaskSpace::jointSpace);
+        // pController = new panda_controller::ComputedTorqueMethod(TaskSpace::jointSpace);
+        // pController = new panda_controller::Backstepping(TaskSpace::jointSpace);
+        pController = new panda_controller::PD(TaskSpace::jointSpace);
     }
     if (pPanda == nullptr)
     {

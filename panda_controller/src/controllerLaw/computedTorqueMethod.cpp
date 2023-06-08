@@ -1,10 +1,12 @@
-#include "pandaController.h"
+#include "robotController/pandaController.h"
 
 namespace panda_controller
 {
     ComputedTorqueMethod::ComputedTorqueMethod(TaskSpace taskSpace)
     {
         this->taskSpace = taskSpace;
+        this->controllerLawName = "ComputedTorqueMethod";
+        std::cout << "[robotController] controllerLawName: " << controllerLawName << std::endl;
     }
 
     void ComputedTorqueMethod::setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d_in)

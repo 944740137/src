@@ -1,9 +1,9 @@
 #pragma once
-// #include <algorithm/pinocchino_interactive.h>
 
+#include "robot/robot.hpp"
 #include <fstream>
 #include <iostream>
-#include "robot/robot.hpp"
+#include <string>
 
 namespace robot_controller
 {
@@ -17,6 +17,8 @@ namespace robot_controller
         double time = 0;
         std::ofstream myfile;
         double filterParams = 0.005;
+        std::string controllerLawName;
+
         // error
         Eigen::Matrix<double, _Dofs, 1> jointError;
         Eigen::Matrix<double, _Dofs, 1> djointError;
@@ -45,6 +47,7 @@ namespace robot_controller
         void calError(my_robot::Robot<_Dofs> *robot);
         void updateTime();
         void setRecord(int record);
+        std::string getControllerLawName();
 
         // 可重写
         virtual void recordData(my_robot::Robot<_Dofs> *robot);
@@ -96,6 +99,11 @@ namespace robot_controller
     {
         this->recordPeriod = record;
     }
+    template <int _Dofs, typename pubDataType, typename dynParamType>
+    std::string Controller<_Dofs, pubDataType, dynParamType>::getControllerLawName()
+    {
+        return this->controllerLawName;
+    }
 
     // 可重写的函数
     template <int _Dofs, typename pubDataType, typename dynParamType>
@@ -107,6 +115,7 @@ namespace robot_controller
         {
             this->myfile.open("/home/wd/pandaController.txt");
             this->myfile << "pandaController" << std::endl;
+            this->myfile << this->controllerLawName << std::endl;
             this->myfile << "--------程序编译日期:" << __DATE__ << "--------" << std::endl;
             this->myfile << "--------程序编译时刻:" << __TIME__ << "--------" << std::endl;
         }
