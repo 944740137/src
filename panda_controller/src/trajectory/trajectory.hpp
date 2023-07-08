@@ -19,7 +19,7 @@ void JointSinTrajectory(Eigen::Matrix<double, _Dofs, 1> selectAxis, double nowTi
 template <int _Dofs>
 void JointCosTrajectory(Eigen::Matrix<double, _Dofs, 1> selectAxis, double nowTime, double posRatio, double velRatio, Eigen::Matrix<double, _Dofs, 1> &deltaAngle, Eigen::Matrix<double, _Dofs, 1> &dDeltaAngle, Eigen::Matrix<double, _Dofs, 1> &ddDeltaAngle)
 {
-    double maxPos = M_PI / 4; // 单向
+    double maxPos = M_PI / 4 * 0.5; // 单向
     double maxVel = M_PI / 2; // 单向
 
     for (size_t i = 0; i < _Dofs; i++)

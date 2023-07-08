@@ -3,11 +3,11 @@
 Robot7 *pPanda = nullptr;
 Robot7Controller *pController = nullptr;
 
-void pandaRun(Eigen::Matrix<double, DIM, 1> q, Eigen::Matrix<double, DIM, 1> dq, Eigen::Matrix<double, DIM, 1> tau, Eigen::Vector3d position, Eigen::Quaterniond orientation, Eigen::Affine3d TO2E, Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug)
+void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &dq, const Eigen::Matrix<double, DIM, 1> &theta, const Eigen::Matrix<double, DIM, 1> &tau, const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, const Eigen::Affine3d &TO2E, Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug)
 {
     pController->updateTime();
 
-    pPanda->updateJointData(q, dq, tau);
+    pPanda->updateJointData(q, theta, dq, tau);
 
     pPanda->updateEndeffectorData(position, orientation, TO2E);
 
@@ -34,8 +34,8 @@ void pandaInit()
     if (pController == nullptr)
     {
         // pController = new panda_controller::ComputedTorqueMethod(TaskSpace::jointSpace);
-        // pController = new panda_controller::Backstepping(TaskSpace::jointSpace);
-        pController = new panda_controller::PD(TaskSpace::jointSpace);
+        pController = new panda_controller::Backstepping(TaskSpace::jointSpace);
+        // pController = new panda_controller::PD(TaskSpace::jointSpace);
     }
     if (pPanda == nullptr)
     {
@@ -43,14 +43,14 @@ void pandaInit()
     }
 }
 
-void pandaStart(Eigen::Matrix<double, DIM, 1> q0, Eigen::Vector3d position, Eigen::Quaterniond orientation, int recordPeriod)
+void pandaStart(const Eigen::Matrix<double, DIM, 1> &q0, const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, int recordPeriod)
 {
     pController->setRecord(recordPeriod);
     pPanda->setq0(q0);
     pPanda->setPosAndOri0(position, orientation);
 }
 
-void pandaGetDyn(Eigen::Matrix<double, 7, 7> M, Eigen::Matrix<double, 7, 1> c, Eigen::Matrix<double, 7, 1> G, Eigen::Matrix<double, 6, 7> J)
+void pandaGetDyn(const Eigen::Matrix<double, 7, 7> &M, const Eigen::Matrix<double, 7, 1> &c, const Eigen::Matrix<double, 7, 1> &G, const Eigen::Matrix<double, 6, 7> &J)
 {
     pPanda->setExternM(M);
     pPanda->setExternc(c);

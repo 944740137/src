@@ -6,7 +6,7 @@ namespace panda_controller
     {
         this->taskSpace = taskSpace;
         this->controllerLawName = "Backstepping";
-        std::cout << "[robotController] controllerLawName:" << controllerLawName << std::endl;
+        std::cout << "[robotController] 控制律:" << controllerLawName << std::endl;
     }
 
     void Backstepping::setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d_in)
@@ -41,7 +41,7 @@ namespace panda_controller
             Eigen::Matrix<double, 7, 1> selectAxis;
             selectAxis << 1, 1, 1, 1, 1, 1, 1; // 设置0，1，选择运动轴
 
-            JointSinTrajectory<7>(selectAxis, this->time / 1000.0, TPP, TVP, deltaAngle, dDeltaAngle, ddDeltaAngle);
+            JointCosTrajectory<7>(selectAxis, this->time / 1000.0, TPP, TVP, deltaAngle, dDeltaAngle, ddDeltaAngle);
 
             this->q_d = robot->getq0() + deltaAngle;
             this->dq_d = dDeltaAngle;

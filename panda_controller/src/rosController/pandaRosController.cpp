@@ -104,9 +104,9 @@ namespace panda_controller
   }
   void PandaController::starting(const ros::Time & /*time*/)
   {
-    std::cout << "[robotController] start1:panda_controller" << std::endl;
-    std::cout << "[robotController] start2:panda_controller" << std::endl;
-    std::cout << "[robotController] 编译日期:" << __DATE__ << std::endl;
+    std::cout << "[robotController] start1:panda_controller\n";
+    std::cout << "[robotController] start2:panda_controller\n";
+    std::cout << "[robotController] 编译日期:" << __DATE__ << "\n";
     std::cout << "[robotController] 编译时刻:" << __TIME__ << std::endl;
 
     // 初值设置
@@ -119,36 +119,33 @@ namespace panda_controller
   }
   void PandaController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
-    // 发布数据
-    panda_controller::paramForDebug param_debug;
-
     // 获取传感器数据
-    franka::RobotState robot_state = state_handle_->getRobotState();
-    Eigen::Matrix<double, 7, 1> q = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
-    Eigen::Matrix<double, 7, 1> dq = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
-    Eigen::Matrix<double, 7, 1> tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
-    Eigen::Matrix<double, 7, 1> tau_d;
-    Eigen::Affine3d transform(Eigen::Matrix4d::Map(robot_state.O_T_EE.data())); // 齐次变换矩阵
-    Eigen::Vector3d position(transform.translation());
-    Eigen::Quaterniond orientation = Eigen::Quaterniond(transform.rotation());
+    this->robot_state = state_handle_->getRobotState();
+    this->q = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
+    this->theta = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.theta.data());
+    this->dq = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
+    this->tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
+    this->transform = Eigen::Affine3d(Eigen::Matrix4d::Map(robot_state.O_T_EE.data())); // 齐次变换矩阵
+    this->position = Eigen::Vector3d(transform.translation());
+    this->orientation = Eigen::Quaterniond(transform.rotation());
 
     // 获取动力学数据
-    Eigen::Matrix<double, 7, 7> M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(model_handle_->getMass().data());
-    Eigen::Matrix<double, 7, 1> c = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getCoriolis().data());
-    Eigen::Matrix<double, 7, 1> G = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getGravity().data());
-    Eigen::Matrix<double, 6, 7> J = Eigen::Map<Eigen::Matrix<double, 6, 7>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+    this->M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(model_handle_->getMass().data());
+    this->c = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getCoriolis().data());
+    this->G = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getGravity().data());
+    this->J = Eigen::Map<Eigen::Matrix<double, 6, 7>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 
-    pandaGetDyn(M, c, G, J);
-    pandaRun(q, dq, tau_J_d, position, orientation, transform, tau_d, param_debug);
+    pandaGetDyn(this->M, this->c, this->G, this->J);
+    pandaRun(this->q, this->dq, this->theta, this->tau_J_d, this->position, this->orientation, this->transform, this->tau_d, this->param_debug);
 
     // 平滑力矩命令并发布
-    tau_d << saturateTorqueRate(tau_d, tau_J_d);
+    this->tau_d << saturateTorqueRate(this->tau_d, this->tau_J_d);
     for (size_t i = 0; i < 7; ++i)
     {
-      joint_handles_[i].setCommand(tau_d(i)); // 关节句柄设置力矩命令
+      joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
     }
 
-    paramForDebug.publish(param_debug);
+    paramForDebug.publish(this->param_debug);
   }
 
   Eigen::Matrix<double, 7, 1> PandaController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)

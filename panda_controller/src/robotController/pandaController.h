@@ -124,7 +124,8 @@ namespace panda_controller
 extern Robot7 *pPanda;
 extern Robot7Controller *pController;
 void pandaInit();
-void pandaStart(Eigen::Matrix<double, DIM, 1> q0, Eigen::Vector3d position, Eigen::Quaterniond orientation, int recordPeriod);
-void pandaRun(Eigen::Matrix<double, DIM, 1> q, Eigen::Matrix<double, DIM, 1> dq, Eigen::Matrix<double, DIM, 1> tau, Eigen::Vector3d position, Eigen::Quaterniond orientation, Eigen::Affine3d TO2E, Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug);
-void pandaGetDyn(Eigen::Matrix<double, 7, 7> M, Eigen::Matrix<double, 7, 1> C, Eigen::Matrix<double, 7, 1> G, Eigen::Matrix<double, 6, 7> J);
+void pandaStart(const Eigen::Matrix<double, DIM, 1> &q0, const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, int recordPeriod);
+void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &dq, const Eigen::Matrix<double, DIM, 1> &theta, const Eigen::Matrix<double, DIM, 1> &tau, const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, const Eigen::Affine3d &TO2E, Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug);
+void pandaGetDyn(const Eigen::Matrix<double, 7, 7> &M, const Eigen::Matrix<double, 7, 1> &c, const Eigen::Matrix<double, 7, 1> &G, const Eigen::Matrix<double, 6, 7> &J);
+
 #endif

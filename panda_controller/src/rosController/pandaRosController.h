@@ -55,8 +55,24 @@ namespace panda_controller
 
     // 发布数据
     ros::Publisher paramForDebug;
+    panda_controller::paramForDebug param_debug;
 
+    // 获取传感器数据
+    franka::RobotState robot_state;
+    Eigen::Matrix<double, 7, 1> q;
+    Eigen::Matrix<double, 7, 1> theta;
+    Eigen::Matrix<double, 7, 1> dq;
+    Eigen::Matrix<double, 7, 1> tau_J_d;
+    Eigen::Matrix<double, 7, 1> tau_d;
+    Eigen::Affine3d transform; // 齐次变换矩阵
+    Eigen::Vector3d position;
+    Eigen::Quaterniond orientation;
 
+    // 获取动力学数据
+    Eigen::Matrix<double, 7, 7> M;
+    Eigen::Matrix<double, 7, 1> c;
+    Eigen::Matrix<double, 7, 1> G;
+    Eigen::Matrix<double, 6, 7> J;
   };
 
 } // namespace franka_example_controllers

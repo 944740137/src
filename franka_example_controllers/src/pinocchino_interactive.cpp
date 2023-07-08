@@ -5,7 +5,7 @@ pinLibInteractive::pinLibInteractive()
 {
     static pinocchio::Model model;
     static pinocchio::Data data;
-    std::string urdf = std::string("/home/wd/franka_ros/3_workspace/src/franka_description/robots/panda/panda_withoutHand.urdf");
+    std::string urdf = std::string("/home/wd/franka_ros/3_workspace/src/franka_description/robots/panda/panda_withHand.urdf");
     std::cout << "------------------" << urdf << "------------------" << std::endl;
     pinocchio::urdf::buildModel(urdf, model);
     pModel = &model;

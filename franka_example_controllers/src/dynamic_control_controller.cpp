@@ -104,34 +104,37 @@ namespace franka_example_controllers
   {
     std::cout << "--------------start1:JointDynamicControlController--------------" << std::endl;
     std::cout << "--------------start2:JointDynamicControlController--------------" << std::endl;
-    
+
     // 获取机器人初始状态
     franka::RobotState initial_state = state_handle_->getRobotState();
     // 获取当前关节位置
     Eigen::Map<Eigen::Matrix<double, 7, 1>> q_initial_(initial_state.q.data());
 
     // 控制参数赋初值
-    int tmp = 1;
-    Kp.setIdentity();
-    Kp = tmp * Eigen::MatrixXd::Identity(7, 7);
-    Kv.setIdentity();
-    Kv = tmp * Eigen::MatrixXd::Identity(7, 7);
-    K1.setIdentity();
-    K1 = tmp * Eigen::MatrixXd::Identity(7, 7);
-    K2.setIdentity();
-    K2 = tmp * Eigen::MatrixXd::Identity(7, 7);
+    // int tmp = 1;
+    // Kp.setIdentity();
+    // Kp = tmp * Eigen::MatrixXd::Identity(7, 7);
+    // Kv.setIdentity();
+    // Kv = tmp * Eigen::MatrixXd::Identity(7, 7);
+    // K1.setIdentity();
+    // K1 = tmp * Eigen::MatrixXd::Identity(7, 7);
+    // K2.setIdentity();
+    // K2 = tmp * Eigen::MatrixXd::Identity(7, 7);
 
     q_d.setZero();
     dq_d.setZero();
     ddq_d.setZero();
     q_initial = q_initial_;
     elapsed_time = ros::Duration(0.0);
-
+    std::cout << "pinLibInteractive start" << std::endl;
     if (pinInteractive == nullptr)
       pinInteractive = new pinLibInteractive();
+    std::cout << "pinLibInteractive over" << std::endl;
   }
   void JointDynamicControlController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
+    // std::cout << "update" << std::endl;
+
     // 记录数据
     if (firstUpdate)
     {
@@ -180,17 +183,26 @@ namespace franka_example_controllers
     Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
     Eigen::Map<Eigen::Matrix<double, 7, 1>> G(g_array.data());
 
+    Eigen::Matrix<double, 9, 1> q_tmp;
+    Eigen::Matrix<double, 9, 1> dq_tmp;
+
+    q_tmp << q, 0.02, 0.02;
+    dq_tmp << q, 0, 0;
     // pinocchino
+    // std::cout << "111111111111" << std::endl;
+
     pinocchio::Data data = pinInteractive->getpData();
     pinocchio::Model model = pinInteractive->getpModel();
 
-    pinocchio::forwardKinematics(model, data, q);
+    pinocchio::forwardKinematics(model, data, q_tmp);
     pinocchio::updateFramePlacements(model, data);
+    // std::cout << "2222222222" << std::endl;
 
-    pinocchio::computeJointJacobians(model, data, q);
+    pinocchio::computeJointJacobians(model, data, q_tmp);
     Eigen::MatrixXd J_pin1 = data.J;
-    pinocchio::computeJointJacobiansTimeVariation(model, data, q, dq);
+    pinocchio::computeJointJacobiansTimeVariation(model, data, q_tmp, dq_tmp);
     Eigen::MatrixXd dJ_pin = data.dJ;
+    // std::cout << "333333" << std::endl;
 
     Eigen::MatrixXd J_pin2 = pinocchio::computeJointJacobians(model, data);
 
@@ -198,20 +210,21 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 6, 7> J_pin4;
     // Eigen::Matrix<double, 6, 4> J1, J2, dJ;
 
-    pinocchio::JointIndex joint_id = (pinocchio::JointIndex)(model.njoints - 2);
+    // pinocchio::JointIndex joint_id = (pinocchio::JointIndex)(model.njoints - 2);
 
-    computeJointJacobian(model, data, q, joint_id, J_pin3);
-    pinocchio::getJointJacobian(model, data, joint_id, pinocchio::LOCAL_WORLD_ALIGNED, J_pin4);
+    // computeJointJacobian(model, data, q, joint_id, J_pin3);
+    // pinocchio::getJointJacobian(model, data, joint_id, pinocchio::LOCAL_WORLD_ALIGNED, J_pin4);
 
-    pinocchio::rnea(model, data, q, dq, ddq_d);
-    Eigen::MatrixXd G_pin = pinocchio::computeGeneralizedGravity(model, data, q);
+    Eigen::Matrix<double, 9, 1> ddq_d_tmp;
+    pinocchio::rnea(model, data, q_tmp, dq_tmp, ddq_d_tmp);
+    Eigen::MatrixXd G_pin = pinocchio::computeGeneralizedGravity(model, data, q_tmp);
     // Eigen::MatrixXd G_pin = data.g;
-    pinocchio::computeCoriolisMatrix(model, data, q, dq);
+    pinocchio::computeCoriolisMatrix(model, data, q_tmp, dq_tmp);
     Eigen::MatrixXd C_pin = data.C;
     pinocchio::getCoriolisMatrix(model, data);
     Eigen::MatrixXd C_pin_ = data.C;
 
-    pinocchio::crba(model, data, q);
+    pinocchio::crba(model, data, q_tmp);
     data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
     Eigen::MatrixXd M_pin = data.M;
 
@@ -232,8 +245,8 @@ namespace franka_example_controllers
     // 纯PD控制----------------------------------------------------------------
     // tau_d << Kp * error + Kv * derror; /* + G */
     // 计算力矩 + PD-----------------------------------------------------------
-    qc = ddq_d + Kp * error + Kv * derror;
-    tau_d << inertiaMatrix1 * (qc) + coriolisTerm; /* + G */
+    // qc = ddq_d + Kp * error + Kv * derror;
+    // tau_d << inertiaMatrix1 * (qc) + coriolisTerm; /* + G */
     // 反步控制----------------------------------------------------------------
     // tau_d << inertiaMatrix2 * dr + coriolisMatrix * dr + K2 * error2 + K1 * derror; /* + G */
     // 小练-------------------------------------------------------------------
@@ -255,8 +268,8 @@ namespace franka_example_controllers
       myfile << coriolisTerm << std::endl;
       myfile << "pinocchino:CTerm:" << std::endl;
       myfile << C_pin * dq << std::endl;
-      myfile << "pinocchino:CTerm2:" << std::endl;
-      myfile << C_pin_ * dq << std::endl;
+      // myfile << "pinocchino:CTerm2:" << std::endl;
+      // myfile << C_pin_ * dq << std::endl;
       myfile << "franka:G:" << std::endl;
       myfile << G << std::endl;
       myfile << "pinocchino:G:" << std::endl;
@@ -265,16 +278,16 @@ namespace franka_example_controllers
       myfile << J << std::endl;
       myfile << "pinocchino:J1:" << std::endl;
       myfile << J_pin1 << std::endl;
-      myfile << "pinocchino:J2:" << std::endl;
-      myfile << J_pin2 << std::endl;
+      // myfile << "pinocchino:J2:" << std::endl;
+      // myfile << J_pin2 << std::endl;
       // myfile << "pinocchino:J3:" << std::endl;
       // myfile << J_pin3 << std::endl;
-      myfile << "pinocchino:J4:" << std::endl;
-      myfile << J_pin4 << std::endl;
-      myfile << "pinocchino:C:" << std::endl;
-      myfile << C_pin << std::endl;
-      myfile << "pinocchino:C2:" << std::endl;
-      myfile << C_pin_ << std::endl;
+      // myfile << "pinocchino:J4:" << std::endl;
+      // myfile << J_pin4 << std::endl;
+      // myfile << "pinocchino:C:" << std::endl;
+      // myfile << C_pin << std::endl;
+      // myfile << "pinocchino:C2:" << std::endl;
+      // myfile << C_pin_ << std::endl;
     }
 
     // 平滑命令
@@ -309,17 +322,43 @@ namespace franka_example_controllers
   }
   void JointDynamicControlController::controlParamCallback(franka_example_controllers::dynamic_control_paramConfig &config, uint32_t /*level*/)
   {
-    K1_target = config.K1 * Eigen::MatrixXd::Identity(7, 7);
-    K2_target = config.K2 * Eigen::MatrixXd::Identity(7, 7);
-    Kp_target = config.Kp * Eigen::MatrixXd::Identity(7, 7);
-    Kv_target = config.Kv * Eigen::MatrixXd::Identity(7, 7);
+    std::array<double, 7> Kp_values = {config.Kp1, config.Kp2, config.Kp3, config.Kp4, config.Kp5, config.Kp6, config.Kp7};
+    std::array<double, 7> Kv_values = {config.Kv1, config.Kv2, config.Kv3, config.Kv4, config.Kv5, config.Kv6, config.Kv7};
+
+    std::array<double, 7> K1_values = {config.K1_1, config.K1_2, config.K1_3, config.K1_4, config.K1_5, config.K1_6, config.K1_7};
+    std::array<double, 7> K2_values = {config.K2_1, config.K2_2, config.K2_3, config.K2_4, config.K2_5, config.K2_6, config.K2_7};
+    if (time == 0)
+    {
+      for (int i = 0; i < 7; i++)
+      {
+        K1(i, i) = K1_values[i];
+        K2(i, i) = K2_values[i];
+      }
+    }
+    for (int i = 0; i < 7; i++)
+    {
+      K1_target(i, i) = K1_values[i];
+      K2_target(i, i) = K2_values[i];
+    }
+
+    if (time == 0)
+    {
+      for (int i = 0; i < 7; i++)
+      {
+        Kp(i, i) = Kp_values[i];
+        Kv(i, i) = Kv_values[i];
+      }
+    }
+    for (int i = 0; i < 7; i++)
+    {
+      Kp_target(i, i) = Kp_values[i];
+      Kv_target(i, i) = Kv_values[i];
+    }
   }
   void JointDynamicControlController::controllerParamRenew()
   {
     Kp = filter_params * Kp_target + (1.0 - filter_params) * Kp;
     Kv = filter_params * Kv_target + (1.0 - filter_params) * Kv;
-    K1 = filter_params * K1_target + (1.0 - filter_params) * K1;
-    K2 = filter_params * K2_target + (1.0 - filter_params) * K2;
   }
 
   bool CartesianDynamicControlController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
@@ -507,15 +546,15 @@ namespace franka_example_controllers
   }
   void CartesianDynamicControlController::controlParamCallback(franka_example_controllers::dynamic_control_paramConfig &config, uint32_t /*level*/)
   {
-    Kp_target.setIdentity();
-    Kp_target = config.Kp * Eigen::MatrixXd::Identity(7, 7);
-    Kv_target.setIdentity();
-    Kv_target = config.Kv * Eigen::MatrixXd::Identity(7, 7);
+    // Kp_target.setIdentity();
+    // Kp_target = config.Kp * Eigen::MatrixXd::Identity(7, 7);
+    // Kv_target.setIdentity();
+    // Kv_target = config.Kv * Eigen::MatrixXd::Identity(7, 7);
   }
   void CartesianDynamicControlController::controllerParamRenew()
   {
-    Kp = filter_params * Kp_target + (1.0 - filter_params) * Kp;
-    Kv = filter_params * Kv_target + (1.0 - filter_params) * Kv;
+    // Kp = filter_params * Kp_target + (1.0 - filter_params) * Kp;
+    // Kv = filter_params * Kv_target + (1.0 - filter_params) * Kv;
   }
 
 } // namespace franka_example_controllers
