@@ -6,6 +6,7 @@
 #include <panda_controller/panda_controller_paramConfig.h>
 #include <panda_controller/paramForDebug.h>
 
+
 enum TaskSpace
 {
     jointSpace,
@@ -121,6 +122,7 @@ namespace panda_controller
 };
 
 //**//
+
 extern Robot7 *pPanda;
 extern Robot7Controller *pController;
 void pandaInit();

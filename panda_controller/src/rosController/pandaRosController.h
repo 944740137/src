@@ -26,7 +26,6 @@
 
 namespace panda_controller
 {
-
   // 关节空间的动力学控制
   class PandaController : public controller_interface::MultiInterfaceController<
                               franka_hw::FrankaModelInterface,

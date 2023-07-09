@@ -82,7 +82,6 @@ add_library(panda_controller
   src/controllerLaw/computedTorqueMethod.cpp
   src/controllerLaw/backstepping.cpp
   src/controllerLaw/PD.cpp
-
 )
 
 

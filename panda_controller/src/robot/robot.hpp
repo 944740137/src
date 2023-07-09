@@ -33,7 +33,7 @@ namespace my_robot
         Eigen::Matrix<double, _Dofs, 1> G;
         Eigen::Matrix<double, _Dofs * 10, _Dofs> Y;
         Eigen::Matrix<double, 6, _Dofs> J;
-        Eigen::Matrix<double, _Dofs, 6> J_inv;
+        Eigen::Matrix<double, 6, _Dofs> dJ;
 
         // panda
         Eigen::Matrix<double, 7, 1> externc; // 科氏项,非矩阵
@@ -42,7 +42,8 @@ namespace my_robot
         Eigen::Matrix<double, 6, 7> externJ;
 
         // 加权伪逆
-        Eigen::Matrix<double, 6, _Dofs> dJ;
+        Eigen::Matrix<double, _Dofs, 6> J_inv;
+        Eigen::Matrix<double, 6, _Dofs> externdJ;
 
     public:
         // get
@@ -269,6 +270,7 @@ namespace my_robot
         this->externJ = externJ;
         return true;
     }
+    
     template <int _Dofs>
     Eigen::Matrix<double, _Dofs, _Dofs> Robot<_Dofs>::getExternM()
     {

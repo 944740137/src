@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include "communication/communication.h"
 
 namespace robot_controller
 {
@@ -14,7 +15,7 @@ namespace robot_controller
     public:
         // debug，绘图
         int recordPeriod = 1;
-        double time = 0;
+        unsigned int time = 0;
         std::ofstream myfile;
         double filterParams = 0.005;
         std::string controllerLawName;
@@ -24,10 +25,6 @@ namespace robot_controller
         Eigen::Matrix<double, _Dofs, 1> djointError;
         Eigen::Matrix<double, 6, 1> cartesianError;
         Eigen::Matrix<double, 6, 1> dcartesianError;
-
-        // controllerLaw
-        Eigen::Matrix<double, _Dofs, 1> tau_d;
-        Eigen::Matrix<double, _Dofs, 1> qc;
 
         // desire
         Eigen::Matrix<double, _Dofs, 1> q_d;
@@ -42,12 +39,20 @@ namespace robot_controller
 
         Eigen::Matrix<double, 6, 1> ddX_d; // position+orientation
 
+        // controllerLaw
+        Eigen::Matrix<double, _Dofs, 1> tau_d;
+        Eigen::Matrix<double, _Dofs, 1> qc;
+
+        // 打包通讯
+        struct RobotData robotData;
+
     public:
         // 无需重写
         void calError(my_robot::Robot<_Dofs> *robot);
         void updateTime();
         void setRecord(int record);
         std::string getControllerLawName();
+        void updateData2controller(my_robot::Robot<_Dofs> *robot);
 
         // 可重写
         virtual void recordData(my_robot::Robot<_Dofs> *robot);
@@ -59,6 +64,7 @@ namespace robot_controller
         virtual void calDesire(my_robot::Robot<_Dofs> *robot) = 0;
         virtual void controllerParamRenew() = 0;
     };
+
     // 无需重写的函数
     template <int _Dofs, typename pubDataType, typename dynParamType>
     void Controller<_Dofs, pubDataType, dynParamType>::calError(my_robot::Robot<_Dofs> *robot)
@@ -104,6 +110,25 @@ namespace robot_controller
     {
         return this->controllerLawName;
     }
+    template <int _Dofs, typename pubDataType, typename dynParamType>
+    void Controller<_Dofs, pubDataType, dynParamType>::updateData2controller(my_robot::Robot<_Dofs> *robot)
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            this->robotData.q[i] = robot->getq()[i];
+            this->robotData.q[i] = robot->getdq()[i];
+            this->robotData.q_d[i] = this->q_d[i];
+            this->robotData.dq_d[i] = this->dq_d[i];
+
+            this->robotData.tau_d[i] = this->tau_d[i];
+            this->robotData.tau[i] = robot->getTorque()[i];
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            this->robotData.position[i] = robot->getPosition()[i];
+            this->robotData.orientation[i] = robot->getOrientation().toRotationMatrix().eulerAngles(2, 1, 0)[i];
+        }
+    }
 
     // 可重写的函数
     template <int _Dofs, typename pubDataType, typename dynParamType>
@@ -113,14 +138,17 @@ namespace robot_controller
             return;
         if (time == 1)
         {
-            this->myfile.open("/home/wd/pandaController.txt");
-            this->myfile << "pandaController" << "\n";
+            this->myfile.open("/home/wd/pandaController.txt"); // todo
+            this->myfile << "pandaController"
+                         << "\n";
             this->myfile << this->controllerLawName << "\n";
-            this->myfile << "--------程序编译日期:" << __DATE__ << "--------" << "\n";
+            this->myfile << "--------程序编译日期:" << __DATE__ << "--------"
+                         << "\n";
             this->myfile << "--------程序编译时刻:" << __TIME__ << "--------" << std::endl;
         }
 
-        this->myfile << "time: " << this->time << "_" << "\n";
+        this->myfile << "time: " << this->time << "_"
+                     << "\n";
         this->myfile << "q0: " << robot->getq0().transpose() << "\n";
         this->myfile << "q: " << robot->getq().transpose() << "\n";
         this->myfile << "dq: " << robot->getdq().transpose() << "\n";
@@ -134,16 +162,21 @@ namespace robot_controller
         this->myfile << "Orientation: " << robot->getOrientation().toRotationMatrix().eulerAngles(2, 1, 0).transpose() << "\n";
         this->myfile << "Position: " << robot->getdPosition().transpose() << "\n";
         this->myfile << "Orientation: " << robot->getdOrientation().toRotationMatrix().eulerAngles(2, 1, 0).transpose() << "\n";
-        this->myfile << "T: " << "\n";
+        this->myfile << "T:"
+                     << "\n";
         this->myfile << robot->getT().matrix() << "\n";
 
-        this->myfile << "M: " << "\n";
+        this->myfile << "M:"
+                     << "\n";
         this->myfile << robot->getM() << "\n";
-        this->myfile << "C: " << "\n";
+        this->myfile << "C: "
+                     << "\n";
         this->myfile << robot->getC() * robot->getdq() << "\n";
-        this->myfile << "G: " << "\n";
+        this->myfile << "G: "
+                     << "\n";
         this->myfile << robot->getG() << "\n";
-        this->myfile << "J: " << "\n";
+        this->myfile << "J: "
+                     << "\n";
         this->myfile << robot->getJ() << "\n";
 
         this->myfile << "getTorque: " << robot->getTorque().transpose() << "\n";
