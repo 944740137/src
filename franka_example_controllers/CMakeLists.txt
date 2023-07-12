@@ -34,7 +34,6 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 # 查找编译依赖的库（库需要有findcmake）
-find_package(pinocchio REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Franka 0.9.0 QUIET)
 if(NOT Franka_FOUND)
@@ -83,17 +82,7 @@ catkin_package(
 
 # 构建库
 add_library(franka_example_controllers
-  src/elbow_example_controller.cpp
-  src/cartesian_pose_example_controller.cpp
-  src/cartesian_velocity_example_controller.cpp
-  src/joint_position_example_controller.cpp
-  src/joint_velocity_example_controller.cpp
-  src/model_example_controller.cpp
-  src/joint_impedance_example_controller.cpp
-  src/cartesian_impedance_example_controller.cpp
-  src/nullspace_impedance_controller.cpp
   src/dynamic_control_controller.cpp
-  src/pinocchino_interactive.cpp
 
   src/GP.cpp
   src/KernelFunction.cpp
@@ -113,7 +102,6 @@ add_dependencies(franka_example_controllers
 target_link_libraries(franka_example_controllers PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
-  pinocchio::pinocchio
 
   ${armadillo_lib}
   gsl

@@ -125,9 +125,10 @@ namespace franka_example_controllers
   }
   void JointDynamicControlController::starting(const ros::Time & /*time*/)
   {
-    std::cout << "--------------start1:JointDynamicControlController GP--------------" << std::endl;
-    std::cout << "--------------start2:JointDynamicControlController GP--------------" << std::endl;
-    std::cout << "---------------" << C_Date << "_" << C_Time << "---------------" << std::endl;
+    std::cout << "-----------------------start1:JointDynamicControlController GP-----------------------" << "\n";
+    std::cout << "-----------------------start2:JointDynamicControlController GP-----------------------" << "\n";
+    std::cout << "-----------------------[GProbotController] 编译日期:" << __DATE__ << "\n";
+    std::cout << "-----------------------[GProbotController] 编译时刻:" << __TIME__ << std::endl;
     // 获取机器人初始状态
     franka::RobotState initial_state = state_handle_->getRobotState();
     // 获取当前关节位置
@@ -156,8 +157,8 @@ namespace franka_example_controllers
     // 参数调整 维度在GP.cpp
     int rate = 20;                 // 训练频率
     double noise = 1.0;            // 噪声
-    bool ifGP = false;              // true false
-    bool ifGCompensate = false;     // true false
+    bool ifGP = true;              // true false
+    bool ifGCompensate = false;    // true false
     bool ifComputedTorque = false; // true false
     if (ifGP)
       tmpGP = 0;
@@ -378,13 +379,13 @@ namespace franka_example_controllers
     // 去掉重力补偿
     if (!ifGCompensate)
     {
-      tau_d(axis1) = tau_d(axis1) - G_(axis1); 
+      tau_d(axis1) = tau_d(axis1) - G_(axis1);
       tau_d(axis2) = tau_d(axis2) - G_(axis2);
     }
 
     if (ifGP)
     {
-      tau_d(axis1) = myu(0); 
+      tau_d(axis1) = myu(0);
       tau_d(axis2) = myu(1);
     }
 
@@ -392,31 +393,31 @@ namespace franka_example_controllers
 
     if (time % 1 == 0)
     {
-      // myfile << "--------------------------------------------------------------" << std::endl;
-      // myfile << "time: " << time << "_" << std::endl;
-      // myfile << "q:" << std::endl;
-      // myfile << q.transpose() << std::endl;
-      // myfile << "dq:" << std::endl;
-      // myfile << dq.transpose() << std::endl;
-      // myfile << "ddq:" << std::endl;
-      // myfile << ddq.transpose() << std::endl;
-      // myfile << "error:" << std::endl;
-      // myfile << error.transpose() << std::endl;
-      // myfile << "derror:" << std::endl;
-      // myfile << derror.transpose() << std::endl;
-      // myfile << "S1:" << std::endl;
-      // myfile << S1.transpose() << std::endl;
-      // myfile << "S1_dot:" << std::endl;
-      // myfile << S1_dot.transpose() << std::endl;
-      // myfile << "PD:" << std::endl;
-      // myfile << " KGPp1:" << KGPp1 << " KGPp2:" << KGPp2 << " KGPv1:" << KGPv1 << " KGPv2:" << KGPv2 << std::endl;
-      // myfile << "-----------X1-----------" << std::endl;
-      // myfile << gp.GetTrainingData() << std::endl;
-      // myfile << "-----------K1-----------" << std::endl;
-      // myfile << gp.GetTrainingKData() << std::endl;
-      // myfile << "-----------X2-----------" << std::endl;
-      // myfile << gp2.GetTrainingData() << std::endl;
-      // myfile << "-----------K2-----------" << std::endl;
+      // myfile << "--------------------------------------------------------------" << "\n";
+      // myfile << "time: " << time << "_" << "\n";
+      // myfile << "q:" << "\n";
+      // myfile << q.transpose() << "\n";
+      // myfile << "dq:" << "\n";
+      // myfile << dq.transpose() << "\n";
+      // myfile << "ddq:" << "\n";
+      // myfile << ddq.transpose() << "\n";
+      // myfile << "error:" << "\n";
+      // myfile << error.transpose() << "\n";
+      // myfile << "derror:" << "\n";
+      // myfile << derror.transpose() << "\n";
+      // myfile << "S1:" << "\n";
+      // myfile << S1.transpose() << "\n";
+      // myfile << "S1_dot:" << "\n";
+      // myfile << S1_dot.transpose() << "\n";
+      // myfile << "PD:" << "\n";
+      // myfile << " KGPp1:" << KGPp1 << " KGPp2:" << KGPp2 << " KGPv1:" << KGPv1 << " KGPv2:" << KGPv2 << "\n";
+      // myfile << "-----------X1-----------" << "\n";
+      // myfile << gp.GetTrainingData() << "\n";
+      // myfile << "-----------K1-----------" << "\n";
+      // myfile << gp.GetTrainingKData() << "\n";
+      // myfile << "-----------X2-----------" << "\n";
+      // myfile << gp2.GetTrainingData() << "\n";
+      // myfile << "-----------K2-----------" << "\n";
       // myfile << gp2.GetTrainingKData() << std::endl;
     }
     time++;
