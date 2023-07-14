@@ -50,9 +50,6 @@ generate_messages()
 
 # 动态参数生成器,调用动态参数生成
 generate_dynamic_reconfigure_options(
-  cfg/compliance_param.cfg
-  cfg/desired_mass_param.cfg
-  cfg/nullspace_impedance_param.cfg
   cfg/dynamic_control_param.cfg
 )
 

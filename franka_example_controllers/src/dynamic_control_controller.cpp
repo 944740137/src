@@ -42,8 +42,8 @@ namespace franka_example_controllers
 
   bool JointDynamicControlController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
   {
-    std::cout << "--------------init1:JointDynamicControlController--------------" << std::endl;
-    std::cout << "--------------init2:JointDynamicControlController--------------" << std::endl;
+    std::cout << "-----------------------init1:JointDynamicControlController-----------------------" << std::endl;
+    std::cout << "-----------------------init2:JointDynamicControlController-----------------------" << std::endl;
     // 参数服务器
     std::string arm_id;
     if (!node_handle.getParam("arm_id", arm_id))
@@ -125,8 +125,10 @@ namespace franka_example_controllers
   }
   void JointDynamicControlController::starting(const ros::Time & /*time*/)
   {
-    std::cout << "-----------------------start1:JointDynamicControlController GP-----------------------" << "\n";
-    std::cout << "-----------------------start2:JointDynamicControlController GP-----------------------" << "\n";
+    std::cout << "-----------------------start1:JointDynamicControlController GP-----------------------"
+              << "\n";
+    std::cout << "-----------------------start2:JointDynamicControlController GP-----------------------"
+              << "\n";
     std::cout << "-----------------------[GProbotController] 编译日期:" << __DATE__ << "\n";
     std::cout << "-----------------------[GProbotController] 编译时刻:" << __TIME__ << std::endl;
     // 获取机器人初始状态
@@ -149,58 +151,83 @@ namespace franka_example_controllers
     {
       // debug
       myfile.open("/home/wd/GP.txt");
-      myfile << "GP\n"
-             << std::endl;
-      // firstUpdate = false;
+      myfile << "GP" << std::endl;
     }
 
-    // 参数调整 维度在GP.cpp
+    // GP参数调整 Kg维度在GP.cpp调整
+    int axis1 = 1;
+    int axis2 = 4;
     int rate = 20;                 // 训练频率
     double noise = 1.0;            // 噪声
-    bool ifGP = true;              // true false
-    bool ifGCompensate = false;    // true false
-    bool ifComputedTorque = false; // true false
-    if (ifGP)
+    bool ifGP = true;             // true false
+    bool ifGCompensate = false;     // true false
+    bool ifComputedTorque = false; // true false 计算力矩
+    double r1 = 0.005;             // 加速度滤波参数
+    double r2 = 0.05;              // 速度滤波参数
+    if (ifGP && firstUpdate)
+    {
+      std::cout << "------------------GP 控制器-------------------" << std::endl;
       tmpGP = 0;
-    else
+    }
+    if (!ifGP && firstUpdate)
+    {
+      std::cout << "------------------PD 控制器-------------------" << std::endl;
       tmpGP = 1;
-    int axis1 = 1;
-    int axis2 = 2;
+    }
+    if (ifGCompensate && firstUpdate)
+    {
+      std::cout << "------------------重力补偿：有-------------------" << std::endl;
+    }
+    if (!ifGCompensate && firstUpdate)
+    {
+      std::cout << "------------------重力补偿：无-------------------" << std::endl;
+    }
     axis1--;
     axis2--;
-    double r1 = 0.005; // 加速度滤波参数
-    double r2 = 0.05;  // 速度滤波参数
 
     // 期望轨迹生成
     elapsed_time += t;
-    double part = 2.0;
-    double delta_angle = M_PI / 16 * (1 - std::cos(M_PI / 5.0 * elapsed_time.toSec())) * part;
-    double dot_delta_angle = M_PI / 16 * M_PI / 5.0 * (std::sin(M_PI / 5.0 * elapsed_time.toSec())) * part;
-    double ddot_delta_angle = M_PI / 16 * M_PI / 5.0 * M_PI / 5.0 * (std::cos(M_PI / 5.0 * elapsed_time.toSec())) * part;
+    double part1 = 0.5; // 位置范围参数
+    double part2 = 0.2; // 速度范围参数
+    double delta_angle = M_PI / 16 * (1 - std::cos(M_PI * part2 * elapsed_time.toSec())) * part1;
+    double dot_delta_angle = M_PI / 16 * M_PI * part2 * (std::sin(M_PI * part2 * elapsed_time.toSec())) * part1;
+    double ddot_delta_angle = M_PI / 16 * M_PI * part2 * M_PI * part2 * (std::cos(M_PI * part2 * elapsed_time.toSec())) * part1;
     q_error << 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05;
 
     for (size_t i = 0; i < 7; ++i)
     {
-      /*       if (i == 4)
-            {
-              q_d[i] = q_initial[i] - delta_angle;
-              dq_d[i] = -dot_delta_angle;
-              ddq_d[i] = -ddot_delta_angle;
-            }
-            else
-            {
-              q_d[i] = q_initial[i] + delta_angle;
-              dq_d[i] = dot_delta_angle;
-              ddq_d[i] = ddot_delta_angle;
-            } */
+      /*全部运动*/
+      // if (i == 4)
+      // {
+      //   q_d[i] = q_initial[i] - delta_angle;
+      //   dq_d[i] = -dot_delta_angle;
+      //   ddq_d[i] = -ddot_delta_angle;
+      // }
+      // else
+      // {
+      //   q_d[i] = q_initial[i] + delta_angle;
+      //   dq_d[i] = dot_delta_angle;
+      //   ddq_d[i] = ddot_delta_angle;
+      // }
+
+      /*部分运动*/
       q_d[i] = q_initial[i];
       dq_d[i] = 0;
       ddq_d[i] = 0;
       if (i == axis1 || i == axis2) // wd
       {
-        q_d[i] = q_initial[i] /* + q_error[i] */ + delta_angle;
-        dq_d[i] = dot_delta_angle;
-        ddq_d[i] = ddot_delta_angle;
+        if (i == 4)
+        {
+          q_d[i] = q_initial[i] - delta_angle;
+          dq_d[i] = -dot_delta_angle;
+          ddq_d[i] = -ddot_delta_angle;
+        }
+        else
+        {
+          q_d[i] = q_initial[i] + delta_angle;
+          dq_d[i] = dot_delta_angle;
+          ddq_d[i] = ddot_delta_angle;
+        }
       }
     }
 
@@ -290,11 +317,8 @@ namespace franka_example_controllers
       else
       {
         // long tmp1 = get_system_time_microsecond();
-        // std::cout << "--------------else--------------" << std::endl;
         if (time % rate == 0 || time == 2)
         {
-
-          // std::cout << "--------------if 1--------------" << std::endl;
           gp.AddTraining(Xtr, Ytr1, Utr);
         }
         // std::cout << "-----------K-----------" << std::endl;
@@ -302,10 +326,8 @@ namespace franka_example_controllers
         // std::cout << "-----------X-----------" << std::endl;
         // std::cout << gp.GetTrainingData() << std::endl;
         gp.Predict(X, hatf1, hatg11, hatg12);
-        // std::cout << "--------------else 1 --------------" << std::endl;
         if (time % rate == 0 || time == 2)
         {
-          // std::cout << "--------------if 2--------------" << std::endl;
           gp2.AddTraining(Xtr, Ytr2, Utr);
         }
 
@@ -336,9 +358,8 @@ namespace franka_example_controllers
 
       obstacleBF(0) = r(0) / (25 - r(0) * r(0));
       obstacleBF(1) = r(1) / (25 - r(1) * r(1));
-      u = inv(hatG) * (-hatF + nu) /* - obstacleBF */;
-      // std::cout << "--------------hatG--------------" << std::endl;
-      // std::cout << hatG<< std::endl;
+      u = inv(hatG) * (-hatF + nu) - obstacleBF;
+
       Xtr(0, 0) = q(axis1); // wd
       Xtr(1, 0) = q(axis2);
       Xtr(2, 0) = S2_dot(axis1);
@@ -354,16 +375,11 @@ namespace franka_example_controllers
     // 误差计算
     Eigen::Matrix<double, 7, 1> error;
     Eigen::Matrix<double, 7, 1> derror;
-    // Eigen::Matrix<double, 7, 1> r;
     Eigen::Matrix<double, 7, 1> dr;
     Eigen::Matrix<double, 7, 1> error2;
     error = q_d - q;
     derror = dq_d - dq;
     error2 = derror + K1 * error;
-    // r = dq_d + K1 * error;
-    // dr = ddq_d + K1 * derror;
-
-    // 命令加速度与输入力矩
 
     // 纯PD控制----------------------------------------------------------------
     tau_d << Kp * error + Kv * derror; /* + G */
@@ -373,8 +389,6 @@ namespace franka_example_controllers
       qc = ddq_d + Kp * error + Kv * derror;
       tau_d << inertiaMatrix1 * (qc) + coriolisTerm; /* + G */
     }
-    // 反步控制----------------------------------------------------------------
-    // tau_d << inertiaMatrix2 * dr + coriolisMatrix * dr + K2 * error2 + K1 * derror; /* + G */
 
     // 去掉重力补偿
     if (!ifGCompensate)
@@ -382,15 +396,12 @@ namespace franka_example_controllers
       tau_d(axis1) = tau_d(axis1) - G_(axis1);
       tau_d(axis2) = tau_d(axis2) - G_(axis2);
     }
-
     if (ifGP)
     {
       tau_d(axis1) = myu(0);
       tau_d(axis2) = myu(1);
     }
-
     // debug
-
     if (time % 1 == 0)
     {
       // myfile << "--------------------------------------------------------------" << "\n";
