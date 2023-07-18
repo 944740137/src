@@ -36,7 +36,6 @@ find_package(catkin REQUIRED COMPONENTS
   franka_msgs
   franka_gripper
   franka_example_controllers
-  main_controller
 )
 find_package(Franka 0.9.0 QUIET)
 if(NOT Franka_FOUND)

@@ -28,7 +28,7 @@ inline void pseudoInverse(const Eigen::MatrixXd& M_, Eigen::MatrixXd& M_pinv_, b
 }
 
 //右逆
-inline void weightedPseudoInverse(Eigen::MatrixXd M, Eigen::MatrixXd& M_pinv, Eigen::MatrixXd W) 
+inline void weightedPseudoInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd& M_pinv, const Eigen::MatrixXd &W) 
 {
   M_pinv = W.inverse() * M.transpose() * (M * W.inverse() * M.transpose()).inverse();
 }
