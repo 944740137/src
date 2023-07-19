@@ -127,17 +127,25 @@ namespace franka_example_controllers
   {
     upDateParam();
     // dJ todo：差分改滤波
+    double r1 = 0.1;
     if (time == 0)
-      this->dJ.setZero();
+    {
+      S1 = this->J;
+      S1_dot.setZero();
+    }
     else
-      this->dJ = (this->J - this->J_old) / t.toSec();
-    this->J_old = this->J;
+    {
+      /* dJ= */ S1_dot = (this->J - S1) / r1;
+      S1 = S1_dot * t.toSec() + S1;
+    }
+    this->dJ = S1_dot;
 
-    // 轨迹和误差
+    // 轨迹和误差  3轨迹最差
     static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
-    // cartesianTrajectoryXZ1(time / 1000, 1.0, 1.0, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectoryXZ2(time / 1000, 1.0, 1.0, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    cartesianTrajectoryXZ3(time / 1000, 1.0, 1.0, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
 
     // 伪逆矩阵计算
     Eigen::MatrixXd J_pinv;
@@ -154,15 +162,26 @@ namespace franka_example_controllers
     // 记录数据
     this->time++;
     recordData();
-
-    this->myfile << " " << std::endl;//刷新缓冲区
+    this->myfile << "Xerror: " << Xerror.transpose() << "\n";
+    this->myfile << "X_d: " << X_d.transpose() << "\n";
+    this->myfile << "X: " << this->X.transpose() << "\n";
+    this->myfile << " " << std::endl; // 刷新缓冲区
 
     // 画图
     for (int i = 0; i < 7; i++)
     {
       this->param_debug.tau_d[i] = this->tau_d[i];
+      if (i == 6)
+        break;
+      this->param_debug.X[i] = this->X[i];
+      this->param_debug.X_d[i] = X_d[i];
+      this->param_debug.dX[i] = this->dX[i];
+      this->param_debug.dX_d[i] = dX_d[i];
+      this->param_debug.Xerror[i] = Xerror[i];
+      this->param_debug.dXerror[i] = dXerror[i];
     }
     this->paramForDebug.publish(this->param_debug);
+
     // 目标位置，控制参数更新
     controllerParamRenew();
 
@@ -196,7 +215,7 @@ namespace franka_example_controllers
   {
     this->myfile << "time: " << this->time << "_\n";
 
-    this->myfile << "tau_d: " << this->tau_d.transpose() << "\n";
+    // this->myfile << "tau_d: " << this->tau_d.transpose() << "\n";
     // this->myfile << "q: " << this->q.transpose() << "\n";
     // this->myfile << "dq: " << this->dq.transpose() << "\n";
     // this->myfile << "X: " << this->X.transpose() << "\n";

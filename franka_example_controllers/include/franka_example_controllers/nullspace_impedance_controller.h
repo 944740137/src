@@ -70,7 +70,7 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> q0;
     Eigen::Matrix<double, 6, 1> X0;
     Eigen::Affine3d T0;
-    
+
     // 获取传感器数据
     void upDateParam();
     franka::RobotState robot_state;
@@ -88,8 +88,10 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> G;
     Eigen::Matrix<double, 6, 7> J;
     // 计算雅克比
-    Eigen::Matrix<double, 6, 7> dJ;
+    Eigen::Matrix<double, 6, 7> dJ; //未滤波
     Eigen::Matrix<double, 6, 7> J_old;
+    Eigen::Matrix<double, 6, 7> S1;
+    Eigen::Matrix<double, 6, 7> S1_dot;
 
     /********************************************控制器********************************************/
 

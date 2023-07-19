@@ -1,14 +1,19 @@
 float64[7] tau_d
 #
-float64[7] jointError
-float64[6] cartesianError
-#
 float64[7] q
-float64[7] q_d
 float64[7] dq
+# float64[7] ddq
+float64[7] q_d
 float64[7] dq_d
 float64[7] ddq_d
-float64[3] position
-float64[3] position_d
-float64[3] orientation
-float64[3] orientation_d
+float64[7] qError
+float64[7] dqError
+
+float64[6] X
+float64[6] dX
+# float64[6] ddX
+float64[6] X_d
+float64[6] dX_d
+float64[6] ddX_d
+float64[6] Xerror
+float64[6] dXerror
