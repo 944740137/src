@@ -135,8 +135,11 @@ namespace panda_controller
     this->G = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getGravity().data());
     this->J = Eigen::Map<Eigen::Matrix<double, 6, 7>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
 
+    static Eigen::Matrix<double, 7, 1> q_d;
+    // 更新franka计算的动力学数据
     pandaGetDyn(this->M, this->c, this->G, this->J);
-    pandaRun(this->q, this->dq, this->theta, this->tau_J_d, this->position, this->orientation, this->transform, this->tau_d, this->param_debug);
+    // 更新控制力矩或目标位置(只发目标位置时，使用franka的控制器)
+    pandaRun(this->q, this->dq, this->theta, this->tau_J_d, this->position, this->orientation, this->transform, this->tau_d, this->param_debug, q_d);
 
     // 平滑力矩命令并发布
     this->tau_d << saturateTorqueRate(this->tau_d, this->tau_J_d);
@@ -145,6 +148,7 @@ namespace panda_controller
       joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
     }
 
+    // pub
     paramForDebug.publish(this->param_debug);
   }
 

@@ -12,9 +12,9 @@ void pandaInit()
     }
     if (pController == nullptr)
     {
-        // pController = new panda_controller::ComputedTorqueMethod(TaskSpace::jointSpace);
-        pController = new panda_controller::Backstepping(TaskSpace::jointSpace);
-        // pController = new panda_controller::PD(TaskSpace::jointSpace);
+        pController = new Robot7Controller();
+        pController->controllerLaw = new panda_controller::ComputedTorqueMethod(TaskSpace::jointSpace);
+        // pController->controllerLaw = new panda_controller::PD(TaskSpace::jointSpace);
     }
     if (pPanda == nullptr)
     {
@@ -22,17 +22,12 @@ void pandaInit()
     }
 }
 
-void pandaStart(const Eigen::Matrix<double, DIM, 1> &q0, const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, int recordPeriod)
+void pandaStart(const Eigen::Matrix<double, DIM, 1> &q0, const Eigen::Vector3d &position,
+                const Eigen::Quaterniond &orientation, int recordPeriod)
 {
-    pController->setRecord(recordPeriod);
+    pController->init(recordPeriod);
     pPanda->setq0(q0);
     pPanda->setPosAndOri0(position, orientation);
-
-    // msgid = msgget((key_t)4039, 0666 | IPC_CREAT);
-    // if (msgid == -1)
-    // {
-    //     printf("消息队列创建失败\n");
-    // }
 }
 
 void pandaRecvDataFromController()
@@ -44,7 +39,10 @@ void pandaRecvDataFromController()
     // }
 }
 
-void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &dq, const Eigen::Matrix<double, DIM, 1> &theta, const Eigen::Matrix<double, DIM, 1> &tau, const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, const Eigen::Affine3d &TO2E, Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug)
+void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &dq,
+              const Eigen::Matrix<double, DIM, 1> &theta, const Eigen::Matrix<double, DIM, 1> &tau,
+              const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, const Eigen::Affine3d &TO2E,
+              Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug, Eigen::Matrix<double, DIM, 1> &q_d)
 {
     // 控制器更新时间
     pController->updateTime();
@@ -52,25 +50,29 @@ void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double
     // 机器人更新数据
     pPanda->updateJointData(q, theta, dq, tau);
     pPanda->updateEndeffectorData(position, orientation, TO2E);
-    pPanda->calculation(pController->ddq_d);
+    pPanda->calculation(pController->controllerLaw->ddq_d); // pinocchio
 
-    // 本层控制器更新上层控制器命令
+    // // 本层控制器更新上层控制器命令
 
-    // 本层控制器计算下发队列，更新控制下发力矩
-    pController->calDesire(pPanda);
-    pController->calError(pPanda);
+    // // 本层控制器计算下发队列，更新控制下发力矩
+
+    // 根据队列计算当前期望和误差
+    pController->calDesireQueue(pPanda); // 队列
+    pController->calDesireNext(pPanda);  // 当前期望
+    pController->calError(pPanda);       // 误差
     pController->setControllerLaw(pPanda, tau_d);
 
-    // 本层控制器保存运行数据
-    pController->recordData(pPanda);
-    // 本层控制器调节控制律参数
+    // // 本层控制器调节控制律参数
     pController->controllerParamRenew();
-    // 本层控制器发布运行数据
+
+    // // 本层控制器保存运行数据
+    pController->recordData(pPanda);
+    // // 本层控制器发布运行数据
     pController->pubData(param_debug, pPanda);
 
-    // 控制器发送至上层进程（共享内存）
-    // pController->updateData2controller(pPanda);
-    // pandaRecvDataFromController();
+    // // 控制器发送至上层进程（共享内存）
+    // // pController->updateData2controller(pPanda);
+    // // pandaRecvDataFromController();
 }
 
 void pandaGetDyn(const Eigen::Matrix<double, 7, 7> &M, const Eigen::Matrix<double, 7, 1> &c, const Eigen::Matrix<double, 7, 1> &G, const Eigen::Matrix<double, 6, 7> &J)

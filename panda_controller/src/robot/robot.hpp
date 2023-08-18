@@ -20,7 +20,7 @@ namespace my_robot
         Eigen::Vector3d position0;
         Eigen::Quaterniond orientation0;
         Eigen::Vector3d position;
-        Eigen::Quaterniond orientation;
+        Eigen::Quaterniond orientation;//todo 换成欧拉角
         Eigen::Vector3d dposition;
         Eigen::Quaterniond dorientation;
 
@@ -183,7 +183,7 @@ namespace my_robot
         this->orientation = orientation;
 
         this->dposition = (this->externJ * dq).head(3);
-        static Eigen::Matrix<double, 3, 1> tmp = (this->externJ * dq).tail(3); // 欧拉角
+        Eigen::Matrix<double, 3, 1> tmp = (this->externJ * dq).tail(3); // 欧拉角
         this->dorientation = Eigen::AngleAxisd(tmp[0], Eigen::Vector3d::UnitX()) * Eigen::AngleAxisd(tmp[1], Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(tmp[2], Eigen::Vector3d::UnitZ());
 
         this->TO2E = TO2E;
