@@ -2,11 +2,18 @@
 
 #define DIM 7
 
-class pandaDynLibManager :  public PinocchioDynLibManager<DIM>
+class pandaDynLibManager : public PinocchioDynLibManager<DIM>
 {
 
 public:
-  pandaDynLibManager();
+  pandaDynLibManager(const pandaDynLibManager &) = delete;
+  void operator=(const pandaDynLibManager &) = delete;
+
+  pandaDynLibManager() = delete;
+  virtual ~pandaDynLibManager();
+
+  pandaDynLibManager(std::string urdf);
+  
   void forwardKinematics(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q);
   void updateFramePlacements(pinocchio::Model &model, pinocchio::Data &data);
   void computeJointJacobians(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q);

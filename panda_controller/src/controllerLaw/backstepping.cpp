@@ -2,11 +2,25 @@
 
 namespace panda_controller
 {
-    Backstepping::Backstepping(TaskSpace taskSpace)
+    Backstepping::~Backstepping()
+    {
+    }
+    Backstepping::Backstepping(TaskSpace taskSpace) : jointK1(Eigen::Matrix<double, DIM, DIM>::Zero()),
+                                                      jointK2(Eigen::Matrix<double, DIM, DIM>::Zero()),
+                                                      jointK1_d(Eigen::Matrix<double, DIM, DIM>::Zero()),
+                                                      jointK2_d(Eigen::Matrix<double, DIM, DIM>::Zero()),
+                                                      cartesianK1(Eigen::Matrix<double, 6, 6>::Zero()),
+                                                      cartesianK2(Eigen::Matrix<double, 6, 6>::Zero()),
+                                                      cartesianK1_d(Eigen::Matrix<double, 6, 6>::Zero()),
+                                                      cartesianK2_d(Eigen::Matrix<double, 6, 6>::Zero()),
+                                                      e1(Eigen::Matrix<double, DIM, 1>::Zero()),
+                                                      e2(Eigen::Matrix<double, DIM, 1>::Zero()),
+                                                      r(Eigen::Matrix<double, DIM, 1>::Zero()),
+                                                      dr(Eigen::Matrix<double, DIM, 1>::Zero())
     {
         this->taskSpace = taskSpace;
         this->controllerLawName = "Backstepping";
-        std::cout << "[robotController] 控制律:" << controllerLawName << std::endl;
+        std::cout << "[robotController] 设置控制律:" << controllerLawName << std::endl;
     }
 
     void Backstepping::setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d_in)
@@ -29,33 +43,7 @@ namespace panda_controller
             // tau_d_in = this->tau_d;
         }
     }
-    void Backstepping::calDesire(my_robot::Robot<DIM> *robot)
-    {
-        // if (taskSpace == jointSpace)
-        // {
-        //     double TPP = 0.3; // 位置参数，最大为1
-        //     double TVP = 0.4; // 速度参数，最大为1
-        //     Eigen::Matrix<double, 7, 1> deltaAngle;
-        //     Eigen::Matrix<double, 7, 1> dDeltaAngle;
-        //     Eigen::Matrix<double, 7, 1> ddDeltaAngle;
-        //     Eigen::Matrix<double, 7, 1> selectAxis;
-        //     selectAxis << 1, 1, 1, 1, 1, 1, 1; // 设置0，1，选择运动轴
 
-        //     JointCosTrajectory<7>(selectAxis, this->time / 1000.0, TPP, TVP, deltaAngle, dDeltaAngle, ddDeltaAngle);
-
-        //     this->q_d = robot->getq0() + deltaAngle;
-        //     this->dq_d = dDeltaAngle;
-        //     this->ddq_d = ddDeltaAngle;
-        // }
-        // else
-        // {
-        //     // this->position_d = this->position_d;
-        //     // this->orientation_d = this->orientation_d;
-        //     // this->dposition_d = this->dposition_d;
-        //     // this->dposition_d = this->dposition_d;
-        //     // this->ddX_d = this->ddX_d;
-        // }
-    }
     void Backstepping::dynamicSetParameter(panda_controller::panda_controller_paramConfig &config, unsigned int time)
     {
         if (taskSpace == jointSpace)

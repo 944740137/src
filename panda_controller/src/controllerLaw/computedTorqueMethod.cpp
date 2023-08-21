@@ -2,20 +2,21 @@
 
 namespace panda_controller
 {
-    ComputedTorqueMethod::ComputedTorqueMethod(TaskSpace taskSpace)
+    ComputedTorqueMethod::~ComputedTorqueMethod()
+    {
+    }
+    ComputedTorqueMethod::ComputedTorqueMethod(TaskSpace taskSpace) : jointKv(Eigen::Matrix<double, DIM, DIM>::Zero()),
+                                                                      jointKp(Eigen::Matrix<double, DIM, DIM>::Zero()),
+                                                                      jointKv_d(Eigen::Matrix<double, DIM, DIM>::Zero()),
+                                                                      jointKp_d(Eigen::Matrix<double, DIM, DIM>::Zero()),
+                                                                      cartesianKp(Eigen::Matrix<double, 6, 6>::Zero()),
+                                                                      cartesianKv(Eigen::Matrix<double, 6, 6>::Zero()),
+                                                                      cartesianKp_d(Eigen::Matrix<double, 6, 6>::Zero()),
+                                                                      cartesianKv_d(Eigen::Matrix<double, 6, 6>::Zero())
     {
         this->taskSpace = taskSpace;
         this->controllerLawName = "ComputedTorqueMethod";
-        std::cout << "[robotController] 控制律: " << controllerLawName << std::endl;
-        
-        jointKp.setZero();
-        jointKv.setZero();
-        jointKp_d.setZero();
-        jointKv_d.setZero();
-        cartesianKp.setZero();
-        cartesianKv.setZero();
-        cartesianKp_d.setZero();
-        cartesianKv_d.setZero();
+        std::cout << "[robotController] 设置控制律: " << controllerLawName << std::endl;
     }
 
     void ComputedTorqueMethod::setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d_in)
@@ -33,33 +34,6 @@ namespace panda_controller
             // this->tau_d << robot->getM() * (robot->getJ_inv() * (ddX - robot->getExternJ() * robot->getdq())) + robot->getC() * robot->getdq() /* + G */;
             // tau_d_in = this->tau_d;
         }
-    }
-    void ComputedTorqueMethod::calDesire(my_robot::Robot<DIM> *robot)
-    {
-        // if (taskSpace == jointSpace)
-        // {
-        //     double TPP = 0.3; // 位置参数，最大为1
-        //     double TVP = 0.4; // 速度参数，最大为1
-        //     Eigen::Matrix<double, 7, 1> deltaAngle;
-        //     Eigen::Matrix<double, 7, 1> dDeltaAngle;
-        //     Eigen::Matrix<double, 7, 1> ddDeltaAngle;
-        //     Eigen::Matrix<double, 7, 1> selectAxis;
-        //     selectAxis << 1, 1, 1, 1, 1, 1, 1; // 设置0，1，选择运动轴
-
-        //     JointCosTrajectory<7>(selectAxis, this->time / 1000.0, TPP, TVP, deltaAngle, dDeltaAngle, ddDeltaAngle);
-
-        //     this->q_d = robot->getq0() + deltaAngle;
-        //     this->dq_d = dDeltaAngle;
-        //     this->ddq_d = ddDeltaAngle;
-        // }
-        // else
-        // {
-        //     this->position_d = this->position_d;
-        //     this->orientation_d = this->orientation_d;
-        //     this->dposition_d = this->dposition_d;
-        //     this->dposition_d = this->dposition_d;
-        //     this->ddX_d = this->ddX_d;
-        // }
     }
     void ComputedTorqueMethod::dynamicSetParameter(panda_controller::panda_controller_paramConfig &config, unsigned int time)
     {

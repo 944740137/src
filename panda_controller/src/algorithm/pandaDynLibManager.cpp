@@ -2,7 +2,10 @@
 
 pandaDynLibManager *pPandaDynLibManager = nullptr;
 
-pandaDynLibManager::pandaDynLibManager()
+pandaDynLibManager::~pandaDynLibManager()
+{
+}
+pandaDynLibManager::pandaDynLibManager(std::string urdf) : PinocchioDynLibManager(urdf) // 显式调用父类有参构造
 {
 }
 

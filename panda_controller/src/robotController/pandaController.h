@@ -32,8 +32,13 @@ namespace panda_controller
         Eigen::Matrix<double, 6, 6> cartesianKv_d;
 
     public:
+        ComputedTorqueMethod(const ComputedTorqueMethod &) = delete;
+        void operator=(const ComputedTorqueMethod &) = delete;
+        ComputedTorqueMethod() = delete;
+
+        ~ComputedTorqueMethod();
         ComputedTorqueMethod(TaskSpace taskSpace);
-        void calDesire(my_robot::Robot<DIM> *robot);
+
         void setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d);
 
         void dynamicSetParameter(panda_controller::panda_controller_paramConfig &config, unsigned int time);
@@ -59,14 +64,19 @@ namespace panda_controller
         Eigen::Matrix<double, 6, 6> cartesianK2_d;
 
         // 误差中间变量
-        Eigen::Matrix<double, 7, 1> e1;
-        Eigen::Matrix<double, 7, 1> e2;
-        Eigen::Matrix<double, 7, 1> r;
-        Eigen::Matrix<double, 7, 1> dr;
+        Eigen::Matrix<double, DIM, 1> e1;
+        Eigen::Matrix<double, DIM, 1> e2;
+        Eigen::Matrix<double, DIM, 1> r;
+        Eigen::Matrix<double, DIM, 1> dr;
 
     public:
+        Backstepping(const Backstepping &) = delete;
+        void operator=(const Backstepping &) = delete;
+        Backstepping() = delete;
+
+        ~Backstepping();
         Backstepping(TaskSpace taskSpace);
-        void calDesire(my_robot::Robot<DIM> *robot);
+
         void setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d);
 
         void dynamicSetParameter(panda_controller::panda_controller_paramConfig &config, unsigned int time);
@@ -93,8 +103,13 @@ namespace panda_controller
         Eigen::Matrix<double, 6, 6> cartesianKv_d;
 
     public:
+        PD(const PD &) = delete;
+        void operator=(const PD &) = delete;
+        PD() = delete;
+
+        ~PD();
         PD(TaskSpace taskSpace);
-        void calDesire(my_robot::Robot<DIM> *robot);
+
         void setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d);
 
         void dynamicSetParameter(panda_controller::panda_controller_paramConfig &config, unsigned int time);
