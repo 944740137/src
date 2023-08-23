@@ -37,7 +37,7 @@ namespace panda_controller
         ComputedTorqueMethod() = delete;
 
         ~ComputedTorqueMethod();
-        ComputedTorqueMethod(TaskSpace taskSpace);
+        explicit ComputedTorqueMethod(TaskSpace taskSpace);
 
         void setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d);
 
@@ -75,7 +75,7 @@ namespace panda_controller
         Backstepping() = delete;
 
         ~Backstepping();
-        Backstepping(TaskSpace taskSpace);
+        explicit Backstepping(TaskSpace taskSpace);
 
         void setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d);
 
@@ -108,7 +108,7 @@ namespace panda_controller
         PD() = delete;
 
         ~PD();
-        PD(TaskSpace taskSpace);
+        explicit PD(TaskSpace taskSpace);
 
         void setControllerLaw(my_robot::Robot<DIM> *robot, Eigen::Matrix<double, DIM, 1> &tau_d);
 

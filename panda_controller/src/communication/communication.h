@@ -12,7 +12,7 @@ enum TaskSpace
 };
 enum CommandType
 {
-    append,
+    appendPlan,
     changeStatus
 };
 enum ControllerStatus
@@ -75,4 +75,28 @@ struct SharedMemory
     unsigned int slaveHeartbeat;      // 从站写
     unsigned int masterHeartbeat;     // 主站写
     ControllerCommand controllerData; // 主站写
+};
+
+class Communication
+{
+private:
+    int msgid = -1;
+    int shm_id = -1;
+
+    bool isConnect = false;     // 当前连接
+    bool connectStatus = false; // 连接状态
+    int timeoutCount = 0;
+    int HeartBeatRecord = 0;
+
+    const int maxTimeoutCount = 3;
+
+public:
+    Communication();
+    ~Communication();
+
+    bool checkConnect(SharedMemory *sharedMemoryData);
+    bool createConnect(key_t messageKey, key_t sharedMemorykey, Message *messageData, SharedMemory *sharedMemoryData);
+    bool comSendMessage(Message *messageData, SharedMemory *sharedMemoryData);
+    bool comRecvMessage(Message *messageData, SharedMemory *sharedMemoryData);
+    bool closeConnect(Message *messageData, SharedMemory *sharedMemoryData);
 };

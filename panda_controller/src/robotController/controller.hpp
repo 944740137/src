@@ -57,6 +57,10 @@ namespace robot_controller
     /***/
     /***/
     template <int _Dofs, typename dynParamType>
+    ControllerLaw<_Dofs, dynParamType>::~ControllerLaw()
+    {
+    }
+    template <int _Dofs, typename dynParamType>
     ControllerLaw<_Dofs, dynParamType>::ControllerLaw() : jointError(Eigen::Matrix<double, _Dofs, 1>::Zero()),
                                                           djointError(Eigen::Matrix<double, _Dofs, 1>::Zero()),
                                                           cartesianError(Eigen::Matrix<double, 6, 1>::Zero()),
@@ -74,10 +78,6 @@ namespace robot_controller
 
     {
         // 全部初始化为0
-    }
-    template <int _Dofs, typename dynParamType>
-    ControllerLaw<_Dofs, dynParamType>::~ControllerLaw()
-    {
     }
 
     // _Dofs自由度机器人控制器
@@ -98,7 +98,7 @@ namespace robot_controller
         double Tf = 0; // s
 
         // 运行状态和工作空间
-        bool plannerOver;
+        // bool plannerOver;
         ControllerStatus ControllerStatus_d;  // 目标
         ControllerStatus nowControllerStatus; // 当前
         TaskSpace noWorkTaskSpace;            // 当前
@@ -110,11 +110,11 @@ namespace robot_controller
         std::vector<std::queue<double>> ddq_dQueue{_Dofs};
 
         // 通讯
-        int msgid;
-        int shm_id;
+        int msgid = -1;
+        int shm_id = -1;
         bool connectStatus = false;
-        struct Message *messageData;
-        struct SharedMemory *sharedMemoryData;
+        struct Message *messageData = nullptr;
+        struct SharedMemory *sharedMemoryData = nullptr;
 
         // 控制律
         std::unique_ptr<ControllerLaw<_Dofs, dynParamType>> controllerLaw;
@@ -153,7 +153,7 @@ namespace robot_controller
     {
     }
     template <int _Dofs, typename pubDataType, typename dynParamType>
-    Controller<_Dofs, pubDataType, dynParamType>::Controller()
+    Controller<_Dofs, pubDataType, dynParamType>::Controller() : q_calQueue(Eigen::Matrix<double, _Dofs, 1>::Zero())
     {
     }
 
@@ -174,8 +174,7 @@ namespace robot_controller
     template <int _Dofs, typename pubDataType, typename dynParamType>
     void Controller<_Dofs, pubDataType, dynParamType>::init(int recordPeriod)
     {
-        void *shared_memory = NULL;
-        sharedMemoryData = NULL;
+        void *shared_memory = nullptr;
         messageData = new Message();
 
         setRecord(recordPeriod);
@@ -205,7 +204,7 @@ namespace robot_controller
         sharedMemoryData = (struct SharedMemory *)shared_memory;
         sharedMemoryData->slaveHeartbeat = 0;
 
-        int msgid = msgget(MS_ID, 0666 | IPC_CREAT);
+        msgid = msgget((key_t)MS_ID, 0666 | IPC_CREAT);
         if (msgid == -1)
             printf("消息队列创建失败\n");
         else
