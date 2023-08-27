@@ -44,11 +44,10 @@ void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double
     pPanda->updateEndeffectorData(position, orientation, TO2E);
     pPanda->calculation(pController->controllerLaw->ddq_d); // pinocchio
 
-    //  本层控制器更新上层控制器命令，发送状态给上层
-    pController->communication();
-    pController->updateStatus(pPanda);
-    //  根据是否有新任务，更新队列
-    pController->calDesireQueue(pPanda); // 队列
+    //  通信，读取缓存
+    pController->communication(pPanda);
+    //  根据缓存更新状态
+    pController->updateStatus(pPanda); 
 
     // 根据队列计算当前期望和误差计算输出力矩
     pController->calDesireNext(pPanda); // 取出队头作为当前期望

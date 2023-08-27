@@ -111,11 +111,13 @@ target_include_directories(panda_controller SYSTEM PUBLIC
 target_include_directories(panda_controller PUBLIC
   include
   ${PROJECT_SOURCE_DIR}/src
+  /home/wd/workSpace/WDcontroller/h
 )
 message(${Franka_INCLUDE_DIRS})
 message(${EIGEN3_INCLUDE_DIRS})
 message(${catkin_INCLUDE_DIRS})
 message(${PROJECT_SOURCE_DIR})
+
 ## Installation
 install(TARGETS panda_controller
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

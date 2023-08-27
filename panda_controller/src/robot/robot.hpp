@@ -11,6 +11,14 @@ namespace my_robot
     {
 
     private:
+        // limit
+        const double dposMax[3] = {1.7};
+        const double doriMax[3] = {2.5};
+        const double qMax[7] = {2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159};
+        const double qMin[7] = {-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159};
+        const double dqLimit[7] = {2.1750, 2.1750, 2.1750, 2.1750, 2.6100, 2.6100, 2.6100};
+        const double ddqLimit[7] = {15, 7.5, 10, 12.5, 15, 10, 10};
+
         // sensor
         Eigen::Matrix<double, _Dofs, 1> q0;
         Eigen::Vector3d position0;
@@ -51,6 +59,14 @@ namespace my_robot
 
         Robot();
         virtual ~Robot();
+
+        // gei limit
+        const double *const getdposMax() const;
+        const double *const getdoriMax() const;
+        const double *const getqMax() const;
+        const double *const getqMin() const;
+        const double *const getdqLimit() const;
+        const double *const getddqLimit() const;
 
         // get kinematics
         const Eigen::Matrix<double, _Dofs, 1> &getq0();
@@ -116,6 +132,36 @@ namespace my_robot
         // 全部数据初始化为0
     }
 
+    template <int _Dofs>
+    const double *const Robot<_Dofs>::getdposMax() const
+    {
+        return this->dposMax;
+    }
+    template <int _Dofs>
+    const double *const Robot<_Dofs>::getdoriMax() const
+    {
+        return this->doriMax;
+    }
+    template <int _Dofs>
+    const double *const Robot<_Dofs>::getqMax() const
+    {
+        return this->qMax;
+    }
+    template <int _Dofs>
+    const double *const Robot<_Dofs>::getqMin() const
+    {
+        return this->qMin;
+    }
+    template <int _Dofs>
+    const double *const Robot<_Dofs>::getdqLimit() const
+    {
+        return this->dqLimit;
+    }
+    template <int _Dofs>
+    const double *const Robot<_Dofs>::getddqLimit() const
+    {
+        return this->ddqLimit;
+    }
     // 初值设置和获取
     template <int _Dofs>
     void Robot<_Dofs>::setq0(const Eigen::Matrix<double, _Dofs, 1> &q)

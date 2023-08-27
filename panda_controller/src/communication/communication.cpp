@@ -6,24 +6,24 @@ Communication::~Communication()
 Communication::Communication()
 {
 }
-bool Communication::checkConnect(SharedMemory *sharedMemoryData)
+bool Communication::checkConnect()
 {
     this->timeoutCount++;
     if (this->timeoutCount >= this->maxTimeoutCount)
     {
-        if (HeartBeatRecord == sharedMemoryData->masterHeartbeat)
+        if (this->HeartBeatRecord == this->sharedMemoryBuff->masterHeartbeat)
             this->isConnect = false;
         else
             this->isConnect = true;
-        HeartBeatRecord = sharedMemoryData->masterHeartbeat;
+        this->HeartBeatRecord = this->sharedMemoryBuff->masterHeartbeat;
         this->timeoutCount = 0;
     }
     return this->isConnect;
 }
-bool Communication::createConnect(key_t messageKey, key_t sharedMemorykey, Message *messageData, SharedMemory *sharedMemoryData)
+bool Communication::createConnect(key_t messageKey, key_t sharedMemorykey, RobotData *&robotData, ControllerCommand *&controllerCommand)
 {
     void *shared_memory = nullptr;
-    messageData = new Message();
+    robotData = &(this->messageBuff.robotData);
 
     this->shm_id = shmget((key_t)SM_ID, sizeof(struct SharedMemory), 0666 | IPC_CREAT);
     if (this->shm_id < 0)
@@ -34,7 +34,7 @@ bool Communication::createConnect(key_t messageKey, key_t sharedMemorykey, Messa
     else
         printf("共享内存创建成功\n");
 
-    shared_memory = shmat(sharedMemorykey, NULL, 0);
+    shared_memory = shmat(this->shm_id, NULL, 0);
     if (shared_memory == nullptr)
     {
         printf("共享内存映射失败\n");
@@ -43,10 +43,12 @@ bool Communication::createConnect(key_t messageKey, key_t sharedMemorykey, Messa
     else
         printf("共享内存映射成功\n");
 
-    sharedMemoryData = (struct SharedMemory *)shared_memory;
-    sharedMemoryData->slaveHeartbeat = 0;
+    this->sharedMemoryBuff = (struct SharedMemory *)shared_memory;
+    this->sharedMemoryBuff->slaveHeartbeat = 0;
 
-    this->msgid = msgget(messageKey, 0666 | IPC_CREAT);
+    controllerCommand = &(this->sharedMemoryBuff->controllerData);
+
+    this->msgid = msgget((key_t)messageKey, 0666 | IPC_CREAT);
     if (this->msgid == -1)
     {
         printf("消息队列创建失败\n");
@@ -57,11 +59,11 @@ bool Communication::createConnect(key_t messageKey, key_t sharedMemorykey, Messa
 
     return true;
 }
-bool Communication::comSendMessage(Message *messageData, SharedMemory *sharedMemoryData)
+bool Communication::comSendMessage()
 {
-    if (checkConnect(sharedMemoryData))
+    if (this->checkConnect())
     {
-        messageData->time++;
+        this->messageBuff.time++;
 
         /*读取*/
         if (!this->connectStatus)
@@ -70,11 +72,10 @@ bool Communication::comSendMessage(Message *messageData, SharedMemory *sharedMem
             this->connectStatus = true;
         }
         // printf("主站在线\n");
-        if (msgsnd(this->msgid, (void *)messageData, sizeof(struct Message) - sizeof(long), IPC_NOWAIT) != 0)
+        if (msgsnd(this->msgid, (void *)&(this->messageBuff), sizeof(struct Message) - sizeof(long), IPC_NOWAIT) != 0)
         {
             // printf("发送失败\n");
         }
-        // printf("messageData: %d\n", messageData->time);
     }
     else
     {
@@ -85,14 +86,16 @@ bool Communication::comSendMessage(Message *messageData, SharedMemory *sharedMem
         }
         // printf("主站离线\n");
     }
+    this->sharedMemoryBuff->slaveHeartbeat++;
+
     return this->connectStatus;
 }
-bool Communication::comRecvMessage(Message *messageData, SharedMemory *sharedMemoryData)
+bool Communication::comRecvMessage()
 {
-    
+
     return this->connectStatus;
 }
-bool Communication::closeConnect(Message *messageData, SharedMemory *sharedMemoryData)
+bool Communication::closeConnect()
 {
     return true;
 }
