@@ -1,34 +1,69 @@
 #include <franka_example_controllers/pinocchino_interactive.h>
 
+
 pinLibInteractive *pinInteractive = nullptr;
+
+pinocchio::Model *pModel;
+pinocchio::Data *pData;
+
 pinLibInteractive::pinLibInteractive()
 {
     static pinocchio::Model model;
     static pinocchio::Data data;
-    std::string urdf = std::string("/home/wd/Ros_franka/catkin_franka_230512/src/franka_description/robots/panda/panda_withoutHand.urdf");
+    std::string urdf = std::string("/home/wd/workSpace/ROS/franka_ros/4_workSpaceNullSpace/src/franka_description/robots/panda/panda_withoutHand.urdf");
     std::cout << "------------------" << urdf << "------------------" << std::endl;
     pinocchio::urdf::buildModel(urdf, model);
+
     pModel = &model;
     data = pinocchio::Data(model);
     pData = &data;
 }
-pinocchio::Model &pinLibInteractive::getpModel()
-{
-    return *pModel;
-}
-pinocchio::Data &pinLibInteractive::getpData()
-{
-    return *pData;
-}
-// void pinLibInteractive::myforwardKinematics(pinocchio::Model model_, pinocchio::Data data_, VectorXd q_pin_, VectorXd v_pin_, VectorXd a_pin_)
+// pinocchio::Model &pinLibInteractive::getpModel()
 // {
-//     pinocchio::forwardKinematics(model_, data_, q_pin_, v_pin_, a_pin_);
+//     return *pModel;
 // }
-// void tmp()
+// pinocchio::Data &pinLibInteractive::getpData()
 // {
-//     pinInteractive = new pinLibInteractive();
-//     pinocchio::Data *data = pinInteractive->getpData();
-//     pinocchio::Model *model = pinInteractive->getpModel();
-//     Eigen::VectorXd q_pin(model->nq), v_pin(model->nv), a_pin(model->nv), tau_pin(model->nq);
-//     pinocchio::forwardKinematics(*model, *data, q_pin, v_pin, a_pin);
+//     return *pData;
 // }
+void pinLibInteractive::forwardKinematics(const Eigen::Matrix<double, 7, 1> &q)
+{
+    pinocchio::forwardKinematics(*(pModel), *(pData), q);
+}
+
+void pinLibInteractive::updateFramePlacements()
+{
+    pinocchio::updateFramePlacements(*(pModel), *(pData));
+}
+
+void pinLibInteractive::computeJointJacobians(Eigen::Matrix<double, 6, 7> &J, const Eigen::Matrix<double, 7, 1> &q)
+{
+    pinocchio::computeJointJacobians(*(pModel), *(pData), q);
+    J = pData->J;
+}
+
+void pinLibInteractive::computeJointJacobiansTimeVariation(const Eigen::Matrix<double, 7, 1> &q, const Eigen::Matrix<double, 7, 1> &dq)
+{
+    pinocchio::computeJointJacobiansTimeVariation(*(pModel), *(pData), q, dq);
+}
+
+void pinLibInteractive::rnea(const Eigen::Matrix<double, 7, 1> &q, const Eigen::Matrix<double, 7, 1> &dq, const Eigen::Matrix<double, 7, 1> &ddq_d)
+{
+    pinocchio::rnea(*(pModel), *(pData), q, dq, ddq_d);
+}
+
+void pinLibInteractive::computeGeneralizedGravity(const Eigen::Matrix<double, 7, 1> &q)
+{
+    pinocchio::computeGeneralizedGravity(*(pModel), *(pData), q);
+}
+
+void pinLibInteractive::computeCoriolisMatrix(Eigen::Matrix<double, 7, 7> &C, const Eigen::Matrix<double, 7, 1> &q, const Eigen::Matrix<double, 7, 1> &dq)
+{
+    pinocchio::computeCoriolisMatrix(*(pModel), *(pData), q, dq);
+    C = pData->C;
+}
+
+void pinLibInteractive::crba(const Eigen::Matrix<double, 7, 1> &q)
+{
+    pinocchio::crba(*(pModel), *(pData), q);
+}

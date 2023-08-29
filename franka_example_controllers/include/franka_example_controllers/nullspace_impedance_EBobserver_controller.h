@@ -16,95 +16,143 @@
 #include <ros/time.h>
 #include <Eigen/Dense>
 
-#include <franka_example_controllers/nullspace_impedance_EBobserver_controller_paramConfig.h>
+#include <franka_example_controllers/nullspace_impedance_controller_paramConfig.h>
 #include <franka_example_controllers/paramForDebug.h>
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 
-namespace franka_example_controllers {
+#include <fstream>
+#include <iostream>
 
-class NullSpaceImpedanceEBObserverController : public controller_interface::MultiInterfaceController<
-                                                franka_hw::FrankaModelInterface,
-                                                hardware_interface::EffortJointInterface,
-                                                franka_hw::FrankaStateInterface>
- {
- public:
-  bool init(hardware_interface::RobotHW* robot_hw, ros::NodeHandle& node_handle) override;
-  void starting(const ros::Time&) override;
-  void update(const ros::Time&, const ros::Duration& period) override;
+#include "franka_example_controllers/trajectory.h"
 
- private:
-  // Saturation
-  Eigen::Matrix<double, 7, 1> saturateTorqueRate(const Eigen::Matrix<double, 7, 1>& tau_d_calculated,const Eigen::Matrix<double, 7, 1>& tau_J_d);  // NOLINT (readability-identifier-naming)
+namespace franka_example_controllers
+{
 
-  std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_;  //机器人全部状态
-  std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_;  //机器人的动力学和运动学模型
-  std::vector<hardware_interface::JointHandle> joint_handles_;  //关节状态类
+  class NullSpaceImpedanceEBObserverController : public controller_interface::MultiInterfaceController<
+                                                     franka_hw::FrankaModelInterface,
+                                                     hardware_interface::EffortJointInterface,
+                                                     franka_hw::FrankaStateInterface>
+  {
+  public:
+    bool init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle) override;
+    void starting(const ros::Time &) override;
+    void update(const ros::Time &, const ros::Duration &period) override;
 
-  double filter_params{0.05};//滤波参数，调整目标位置与阻抗变化速率
+  private:
+    /********************************************franka********************************************/
+    // 命令力矩平滑和滤波
+    const double delta_tau_max{1.0}; // 最大力矩变化值
+    double filter_params{0.001};     // 滤波参数，调整目标位置与阻抗变化速率
+    Eigen::Matrix<double, 7, 1> saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d);
+    // 硬件交互
+    std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_; // 机器人全部状态
+    std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_; // 机器人的动力学和运动学模型
+    std::vector<hardware_interface::JointHandle> joint_handles_; // 关节状态类
 
-  const double delta_tau_max{1.0};//最大力矩变化值
+    // 记录和时刻
+    // bool firstUpdate = true; // 用于判断是不是第一个控制周期，计算雅可比导数。
+    double time = 0;
+    std::ofstream myfile;
+    std::ofstream ddxc1file;
+    std::ofstream ddxc2file;
+    std::ofstream dvcfile;
+    std::ofstream ddqc1file;
+    std::ofstream ddqc2file;
 
-  bool firstUpdate = true; //用于判断是不是第一个控制周期，计算雅可比导数。
+    // 动态配置参数
+    std::unique_ptr<dynamic_reconfigure::Server<franka_example_controllers::nullspace_impedance_controller_paramConfig>> dynamic_server_compliance_param_;
+    ros::NodeHandle dynamic_reconfigure_compliance_param_node_;
+    void complianceParamCallback(franka_example_controllers::nullspace_impedance_controller_paramConfig &config, uint32_t level);
+    void controllerParamRenew();
 
-  //主任务
-  int K_pos = 80;
-  int K_ori = 8;
-  int P_pos = 2;
-  int P_ori = 1;
-  Eigen::Matrix<double, 6, 6> K;
-  Eigen::Matrix<double, 6, 6> P;
-  Eigen::Matrix<double, 7, 7> gamma;  //Γf
-  Eigen::Matrix<double, 6, 6> K_target;
-  Eigen::Matrix<double, 6, 6> P_target;
-  Eigen::Matrix<double, 7, 7> gamma_target;  // Γf
-  Eigen::Vector3d position_d;    // xd
-  Eigen::Vector3d d_position_d;
-  Eigen::Vector3d dd_position_d;  // ddxd
-  Eigen::Quaterniond orientation_d;  // xd
-  Eigen::Quaterniond d_orientation_d;
-  Eigen::Quaterniond dd_orientation_d;  // ddxd
-  Eigen::Vector3d position_d_target;
-  Eigen::Vector3d position_d_target1;
-  Eigen::Vector3d position_d_target2;
-  Eigen::Quaterniond orientation_d_target;
-  Eigen::Matrix<double, 7, 1> tau_estimated;
+    // 发布和记录数据
+    ros::Publisher paramForDebug;
+    franka_example_controllers::paramForDebug param_debug;
+    void recordData();
 
-  // 零空间任务
-  Eigen::Matrix<double, 7, 7> Kd;
-  Eigen::Matrix<double, 7, 7> Md;
-  Eigen::Matrix<double, 7, 7> Bd;
-  Eigen::Matrix<double, 7, 7> Kd_target;
-  Eigen::Matrix<double, 7, 7> Md_target;
-  Eigen::Matrix<double, 7, 7> Bd_target;
-  Eigen::Matrix<double, 7, 1> q_d;
-  Eigen::Matrix<double, 7, 1> dq_d;
-  Eigen::Matrix<double, 7, 1> ddq_d;
+    // 初始值
+    Eigen::Matrix<double, 7, 1> q0;
+    Eigen::Matrix<double, 6, 1> X0;
+    Eigen::Affine3d T0;
 
-  // 用于数值微分 滤波
-  std::array<double, 42> jacobian_array_old;
-  Eigen::Matrix<double, 6, 6> Lambda_old;
-  Eigen::Matrix<double, 6, 7> S1;
-  Eigen::Matrix<double, 6, 6> S2;
-  Eigen::Matrix<double, 6, 7> S1_dot;
-  Eigen::Matrix<double, 6, 6> S2_dot;
+    // 获取传感器数据
+    void upDateParam();
+    franka::RobotState robot_state;
+    Eigen::Matrix<double, 7, 1> q;
+    Eigen::Matrix<double, 7, 1> dq;
+    Eigen::Matrix<double, 7, 1> tau_J_d;
+    Eigen::Matrix<double, 7, 1> tau_d;
+    Eigen::Affine3d T;
+    Eigen::Matrix<double, 6, 1> X;
+    Eigen::Matrix<double, 6, 1> dX;
 
-  //轨迹生成
-  ros::Duration elapsed_time_;
+    // 获取动力学/运动学数据
+    Eigen::Matrix<double, 7, 7> M;
+    Eigen::Matrix<double, 7, 1> c;
+    Eigen::Matrix<double, 7, 1> G;
+    Eigen::Matrix<double, 6, 7> J;
 
-  // 动态配置参数
-  std::unique_ptr<dynamic_reconfigure::Server<franka_example_controllers::nullspace_impedance_EBobserver_controller_paramConfig>>dynamic_server_compliance_param_;
-  ros::NodeHandle dynamic_reconfigure_compliance_param_node_;
-  void complianceParamCallback(franka_example_controllers::nullspace_impedance_EBobserver_controller_paramConfig& config,uint32_t level);
+    Eigen::Matrix<double, 7, 7> M_pin;
+    Eigen::Matrix<double, 7, 7> C_pin;
+    Eigen::Matrix<double, 7, 1> G_pin;
+    Eigen::Matrix<double, 6, 7> J_pin;
+    // 计算雅克比
+    Eigen::Matrix<double, 6, 7> dJ; // 未滤波
+    Eigen::Matrix<double, 6, 7> J_old;
+    Eigen::Matrix<double, 6, 7> S1;
+    Eigen::Matrix<double, 6, 7> S1_dot;
 
-  // 参数更新函数
-  void controllerParamRenew();
+    /********************************************控制器********************************************/
+    Eigen::Matrix<double, 3, 7> J1; // 论文里的J
+    Eigen::Matrix<double, 3, 7> dJ1;
+    Eigen::Matrix<double, 7, 3> J1_pinv;
 
-  //求解欧拉角
-  Eigen::Vector3d toEulerAngle(Eigen::Matrix3d R);
+    Eigen::Matrix<double, 7, 4> Z;
+    Eigen::Matrix<double, 4, 7> Z_inv; // v = Z_inv * q
+    Eigen::Matrix<double, 4, 7> dZ_inv;
+    Eigen::Matrix<double, 4, 7> S2;
+    Eigen::Matrix<double, 4, 7> S2_dot;
+    
+    Eigen::Matrix<double, 3, 1> dx;
+    Eigen::Matrix<double, 4, 1> v;
 
-  ros::Publisher paramForDebug;
-  
-};
+    Eigen::Matrix<double, 3, 1> s;
 
-}  // namespace franka_example_controllers
+    Eigen::Matrix<double, 3, 3> Lambdax_inv;
+    Eigen::Matrix<double, 4, 4> Lambdav;
+    Eigen::Matrix<double, 3, 3> ux;
+    Eigen::Matrix<double, 4, 4> uv;
+
+    Eigen::Matrix<double, 7, 1> tau_msr;
+    Eigen::Matrix<double, 7, 1> dtau_msr;
+
+    Eigen::Matrix<double, 3, 1> ddxc;
+    Eigen::Matrix<double, 4, 1> dvc;
+    Eigen::Matrix<double, 7, 1> ddqc;
+
+    Eigen::Matrix<double, 7, 1> tau_task;
+    Eigen::Matrix<double, 7, 1> tau_null;
+
+    // 主任务
+    Eigen::Matrix<double, 3, 3> P;
+    Eigen::Matrix<double, 3, 3> K;
+    Eigen::Matrix<double, 3, 3> P_d;
+    Eigen::Matrix<double, 3, 3> K_d;
+
+    // 零空间任务
+    Eigen::Matrix<double, 4, 4> Bv;
+    Eigen::Matrix<double, 7, 7> Kd;
+    Eigen::Matrix<double, 4, 4> Bv_d;
+    Eigen::Matrix<double, 7, 7> Kd_d;
+
+    Eigen::Matrix<double, 7, 1> task2_q_d;
+    Eigen::Matrix<double, 7, 1> task2_dq_d;
+    Eigen::Matrix<double, 7, 1> task2_ddq_d;
+
+    // 观测器
+    Eigen::Matrix<double, 7, 7> Gamma_inv;
+    Eigen::Matrix<double, 7, 7> Gamma_inv_d;
+  };
+
+} // namespace franka_example_controllers

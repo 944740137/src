@@ -17,8 +17,8 @@ namespace franka_example_controllers
 
   bool NullSpaceImpedanceController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
   {
-    std::cout << "[---------------] init1:NullSpaceImpedanceController" << std::endl;
-    std::cout << "[---------------] init2:NullSpaceImpedanceController" << std::endl;
+    std::cout << "[------------------] init1:NullSpaceImpedanceController" << std::endl;
+    std::cout << "[------------------] init2:NullSpaceImpedanceController" << std::endl;
 
     // 参数服务器
     std::string arm_id;
@@ -104,10 +104,11 @@ namespace franka_example_controllers
 
   void NullSpaceImpedanceController::starting(const ros::Time & /*time*/)
   {
-    std::cout << "[---------------] start1:NullSpaceImpedanceController\n";
-    std::cout << "[---------------] start2:NullSpaceImpedanceController\n";
-    std::cout << "[---------------] 编译日期:" << __DATE__ << "\n";
-    std::cout << "[---------------] 编译时刻:" << __TIME__ << std::endl;
+    std::cout << "[------------------] start1:NullSpaceImpedanceController\n";
+    std::cout << "[------------------] start2:NullSpaceImpedanceController\n";
+    std::cout << "[------------------] 编译日期:" << __DATE__ << "\n";
+    std::cout << "[------------------] 编译时刻:" << __TIME__ << "\n";
+    std::cout << "[------------------] 无观测器" << std::endl;
 
     // 获取机器人初始状态
     franka::RobotState initial_state = state_handle_->getRobotState();
@@ -119,7 +120,7 @@ namespace franka_example_controllers
     this->task2_dq_d.setZero();
     this->task2_ddq_d.setZero();
 
-    this->myfile.open("/home/wd/NullSpaceImpedanceController.txt");
+    this->myfile.open("/home/wd/log/franka/NullSpaceImpedanceController.txt");
     this->myfile << "NullSpaceImpedanceController" << std::endl;
   }
 

@@ -37,7 +37,7 @@ void cartesianTrajectory0(double nowTime, double posRatio, double velRatio, cons
                           Eigen::Matrix<double, 6, 1> &Xerror, Eigen::Matrix<double, 6, 1> &dXerror)
 {
     if (nowTime == 0)
-        std::cout << "[---------------] cartesianTrajectoryXZ: 1" << std::endl;
+        std::cout << "[---------------] cartesianTrajectory0" << std::endl;
     // 初始化（用不到的自由度初始成与当前广义坐标一样，速度加速度为0）
     X_d = X0;
     dX_d.setZero();

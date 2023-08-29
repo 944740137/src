@@ -49,8 +49,6 @@ generate_messages()
 #动态参数生成器,调用动态参数生成
 generate_dynamic_reconfigure_options(
   cfg/nullspace_impedance_controller.cfg
-  cfg/nullspace_impedance_EBobserver_controller.cfg
-  cfg/nullspace_impedance_MBobserver_controller.cfg
 )
 
 #指定包编译信息导出：它对依赖于此功能包的其他功能包来说具有重要作用
@@ -81,7 +79,7 @@ catkin_package(
 add_library(franka_example_controllers
   src/nullspace_impedance_controller.cpp
   src/nullspace_impedance_EBobserver_controller.cpp
-  src/nullspace_impedance_MBobserver_controller.cpp
+  # src/nullspace_impedance_MBobserver_controller.cpp
   src/trajectory.cpp
   src/pinocchino_interactive.cpp
 )
