@@ -17,3 +17,7 @@ float64[6] dX_d
 float64[6] ddX_d
 float64[6] Xerror
 float64[6] dXerror
+
+float64[6] S
+float64[7] tau_msr
+float64[7] dtau_msr

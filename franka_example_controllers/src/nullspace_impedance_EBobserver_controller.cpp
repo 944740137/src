@@ -124,6 +124,7 @@ namespace franka_example_controllers
     this->task2_dq_d.setZero();
     this->task2_ddq_d.setZero();
     this->tau_msr.setZero();
+    this->dtau_msr.setZero();
 
     this->myfile.open("/home/wd/log/franka/nullSpace/NullSpaceImpedanceEBObserverController.txt");
     this->ddxc1file.open("/home/wd/log/franka/nullSpace/ddxc1file.txt");
@@ -207,8 +208,8 @@ namespace franka_example_controllers
     ux = (J1_pinv.transpose() * C_pin - Lambdax_inv.inverse() * dJ1) * J1_pinv;
     s = dXerror.block(0, 0, 3, 1) + P * Xerror.block(0, 0, 3, 1);
 
-    dtau_msr = -Gamma_inv * J1_pinv * s;
     tau_msr = tau_msr + dtau_msr * t.toSec();
+    dtau_msr = -Gamma_inv * J1_pinv * s;
 
     Lambdav = (Z.transpose() * M * Z);
     uv = (Z.transpose() * C_pin - Lambdav * dZ_inv) * Z;
@@ -228,7 +229,7 @@ namespace franka_example_controllers
     char tmp = ' ';
     this->time++;
     recordData();
-    this->myfile << "\n";
+    // this->myfile << "\n";
 
     // 检查雅克比和零空间矩阵
     //  this->myfile << "Jm.determinant()" << Jm.determinant() << "\n";
@@ -252,25 +253,25 @@ namespace franka_example_controllers
     // this->myfile << Z_inv << "\n";
     // this->myfile << "dZ_inv" << tmp << "\n";
     // this->myfile << dZ_inv << "\n";
-    this->myfile << "J1*Z " << tmp << "\n";
-    this->myfile << J1 * Z << "\n";
+    // this->myfile << "J1*Z " << tmp << "\n";
+    // this->myfile << J1 * Z << "\n";
     // this->myfile << "J1*J1_pinv " << tmp << "\n";
     // this->myfile << J1 * J1_pinv << "\n";
-    this->myfile << "\n";
+    // this->myfile << "\n";
     // 中间变量
     // this->myfile << "\n";
     // this->myfile << "Lambdax_inv " << tmp << "\n";
     // this->myfile << Lambdax_inv << "\n";
-    this->myfile << "ux " << tmp << "\n";
-    this->myfile << ux << "\n";
+    // this->myfile << "ux " << tmp << "\n";
+    // this->myfile << ux << "\n";
     // this->myfile << "K " << 1 << "\n";
     // this->myfile << K << "\n";
-    this->myfile << "Lambdav " << 1 << "\n";
-    this->myfile << Lambdav << "\n";
-    this->myfile << "Lambdav.inverse() " << 1 << "\n";
-    this->myfile << Lambdav.inverse() << "\n";
-    this->myfile << "uv " << tmp << "\n";
-    this->myfile << uv << "\n";
+    // this->myfile << "Lambdav " << 1 << "\n";
+    // this->myfile << Lambdav << "\n";
+    // this->myfile << "Lambdav.inverse() " << 1 << "\n";
+    // this->myfile << Lambdav.inverse() << "\n";
+    // this->myfile << "uv " << tmp << "\n";
+    // this->myfile << uv << "\n";
     // this->myfile << "Bv " << 1 << "\n";
     // this->myfile << Bv << "\n";
 
@@ -278,11 +279,11 @@ namespace franka_example_controllers
     // this->myfile << Kd << "\n";
 
     // this->myfile << "\n";
-    // this->myfile << "s:" << s.transpose() << "\n";
+    this->myfile << "s:" << s.transpose() << "\n";
     // this->myfile << "dx:" << dx.transpose() << "\n";
     // this->myfile << "q_hat" << (q - task2_q_d).transpose() << "\n";
-    // this->myfile << "dtau_msr:" << dtau_msr.transpose() << "\n";
-    // this->myfile << "tau_msr:" << tau_msr.transpose() << "\n";
+    this->myfile << "dtau_msr:" << dtau_msr.transpose() << "\n";
+    this->myfile << "tau_msr:" << tau_msr.transpose() << "\n";
     // this->myfile << "v:" << v.transpose() << "\n";
     // this->myfile << "ddxc:" << ddxc.transpose() << "\n";
     // this->myfile << "dvc:" << dvc.transpose() << "\n";
@@ -290,7 +291,9 @@ namespace franka_example_controllers
     this->myfile << " " << std::endl; // 刷新缓冲区
 
     this->ddxc1file << "time: " << this->time << "_\n";
-    this->ddxc1file << "dddxc1: " << (-P * dx + Lambdax_inv * ((ux + K) * s)).transpose() << std::endl;
+    this->ddxc1file << "J1_pinv " << tmp << "\n";
+    this->ddxc1file << J1_pinv << "\n";
+    // this->ddxc1file << "dddxc1: " << (-P * dx + Lambdax_inv * ((ux + K) * s)).transpose() << std::endl;
 
     this->ddxc2file << "time: " << this->time << "_\n";
     this->ddxc2file << "s: " << s.transpose() << "\n";
@@ -314,6 +317,8 @@ namespace franka_example_controllers
     for (int i = 0; i < 7; i++)
     {
       this->param_debug.tau_d[i] = this->tau_d[i];
+      this->param_debug.tau_msr[i] = this->tau_msr[i];
+      this->param_debug.dtau_msr[i] = this->dtau_msr[i];
       if (i == 6)
         break;
       this->param_debug.X[i] = this->X[i];
@@ -322,6 +327,9 @@ namespace franka_example_controllers
       this->param_debug.dX_d[i] = dX_d[i];
       this->param_debug.Xerror[i] = Xerror[i];
       this->param_debug.dXerror[i] = dXerror[i];
+      if (i >= 3)
+        continue;
+      this->param_debug.S[i] = this->s[i];
     }
     this->paramForDebug.publish(this->param_debug);
 
