@@ -13,17 +13,6 @@ void pandaInit()
     if (pController == nullptr)
     {
         pController = new PandaController();
-        // newControllerLaw(pController->controllerLaw, ComputedTorqueMethod, TaskSpace::jointSpace);
-        // newControllerLaw(pController->controllerLaw, Backstepping, TaskSpace::jointSpace)
-        // newControllerLaw(pController->controllerLaw, PD, TaskSpace::jointSpace)
-
-
-        pController->controllerLaw = std::make_unique<PandaComputedTorqueMethodController>(TaskSpace::jointSpace);
-        // pController->controllerLaw = std::make_unique<PandaBacksteppingController>(TaskSpace::jointSpace);
-        // pController->controllerLaw = std::make_unique<PandaPDController>(TaskSpace::jointSpace);
-
-        // pController->controllerLaw = std::make_unique<panda_controller::Backstepping>(TaskSpace::jointSpace);
-        // pController->controllerLaw = std::make_unique<panda_controller::PD>(TaskSpace::jointSpace);
     }
     if (pPanda == nullptr)
     {

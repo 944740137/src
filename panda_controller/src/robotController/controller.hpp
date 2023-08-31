@@ -5,46 +5,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
-// enum ControllerLawType
-// {
-//     Backstepping = 1,
-//     ComputedTorqueMethod = 2,
-//     PD = 3,
-
-// };
-
-// std::map<ControllerLawType, std::string> ControllerLawTypeMap = {
-//     {ControllerLawType::Backstepping, "Backstepping"},
-//     {ControllerLawType::ComputedTorqueMethod, "ComputedTorqueMethod"},
-//     {ControllerLawType::PD, "PD"}
-
-// };
 
 namespace robot_controller
 {
-
-    // template <int _Dofs>
-    // void newControllerLaw(std::unique_ptr<ControllerLaw<_Dofs>> controllerLaw, ControllerLawType type, TaskSpace space)
-    // {
-    //     if (controllerLaw != nullptr)
-    //         controllerLaw.reset(nullptr);
-    //     switch (type)
-    //     {
-    //     case ControllerLawType::Backstepping:
-    //         controllerLaw = std::make_unique<Backstepping<_Dofs>>(space);
-    //         break;
-    //     case ControllerLawType::ComputedTorqueMethod:
-    //         controllerLaw = std::make_unique<ComputedTorqueMethod<_Dofs>>(space);
-    //         break;
-    //     case ControllerLawType::PD:
-    //         controllerLaw = std::make_unique<PD<_Dofs>>(space);
-    //         break;
-    //     default:
-
-    //         break;
-    //     }
-    // }
-
     // _Dofs自由度机器人控制器
     template <int _Dofs, typename pubDataType>
     class Controller
@@ -76,9 +39,9 @@ namespace robot_controller
         double stopTime = 0.1;
 
         // 当前运行状态和工作空间
-        unsigned int nowCommandNum = 0;                  // 当前命令号
-        RunStatus controllerStatus_d = RunStatus::stop;  // 目标状态
-        RunStatus nowControllerStatus = RunStatus::stop; // 当前状态
+        unsigned int nowCommandNum = 0;                   // 当前规划任务号
+        RunStatus controllerStatus_d = RunStatus::wait_;  // 目标状态
+        RunStatus nowControllerStatus = RunStatus::wait_; // 当前状态
 
         // 运行队列
         std::vector<std::queue<double>> q_dQueue{_Dofs};
@@ -98,6 +61,7 @@ namespace robot_controller
         struct ControllerState *controllerStateBUff = nullptr;
 
         //  控制律
+        ControllerLawType controllerLawType = ControllerLawType::PD_;
         std::unique_ptr<ControllerLaw<_Dofs>> controllerLaw;
         ControllerParamBase<_Dofs> controllerParam;
 
@@ -111,6 +75,8 @@ namespace robot_controller
         // api
         void setRecord(int recordPeriod);
         const std::string &getControllerLawName();
+        void dynamicSetParameter();
+        void changeControllerLaw();
 
         // init
         void init(int recordPeriod, my_robot::Robot<_Dofs> *robot);
@@ -127,7 +93,6 @@ namespace robot_controller
         //
         void recordData(my_robot::Robot<_Dofs> *robot);
         void pubData(pubDataType &param_debug, my_robot::Robot<_Dofs> *robot);
-        void dynamicSetParameter();
     };
 
     template <int _Dofs, typename pubDataType>
@@ -152,6 +117,19 @@ namespace robot_controller
         if (controllerLaw != nullptr)
             return this->controllerLaw->controllerLawName;
     }
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::changeControllerLaw()
+    {
+        // newControllerLaw(controllerLaw, ControllerLawType::ComputedTorqueMethod_, plannerTaskSpace);
+        newControllerLaw(controllerLaw, ControllerLawType::Backstepping_, plannerTaskSpace);
+        // newControllerLaw(controllerLaw, ControllerLawType::PD_, plannerTaskSpace);
+    }
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::dynamicSetParameter()
+    {
+        if (controllerLaw.get() != nullptr)
+            controllerLaw->dynamicSetParameter(this->controllerParam, this->time);
+    }
 
     // init
     template <int _Dofs, typename pubDataType>
@@ -170,15 +148,8 @@ namespace robot_controller
             controllerParam.cartesianParam1[i].value = 10;
             controllerParam.cartesianParam2[i].value = 1;
         }
+        changeControllerLaw();
         dynamicSetParameter();
-        
-        // first task
-        for (int i = 0; i < _Dofs; i++)
-        {
-            this->q_calQueue[i] = -0.1;
-        }
-        this->runSpeed = 1.0;
-        this->newPlan = true;
 
         // 建立通信 建立数据映射
         if (this->communicationModel.createConnect((key_t)SM_ID, (key_t)MS_ID, this->robotDataBuff,
@@ -186,6 +157,9 @@ namespace robot_controller
         {
             printf("通信模型建立成功\n");
         }
+        this->nowCommandNum = this->controllerCommandBUff->commandNum;
+        this->controllerStateBUff->controllerStatus = this->nowControllerStatus;
+
     }
 
     // run
@@ -248,29 +222,17 @@ namespace robot_controller
         if (!this->connectStatus)
             return;
 
-        if (this->nowControllerStatus != this->controllerStatus_d) // 切换状态
-        {
-            if (this->controllerStatus_d == RunStatus::stop)
-            {
-                // calStopQueue(robot);
-            }
-            if (this->controllerStatus_d == RunStatus::run)
-            {
-                //
-            }
-            this->nowControllerStatus = this->controllerStatus_d;
-        }
         if (this->jogSpeed != this->jogSpeed_d) // 更改速度
         {
-            // cal
+            // recal
             this->jogSpeed = this->jogSpeed_d;
         }
         if (this->runSpeed != this->runSpeed_d) // 更改速度
         {
             // recal
-            // this->runSpeed = this->runSpeed_d;
+            this->runSpeed = this->runSpeed_d;
         }
-        if (this->newPlan) // 新的规划
+        if (this->newPlan && this->nowControllerStatus == RunStatus::wait_) // 新的规划
         {
             double velLimit[_Dofs] = {0.0};
             double accLimit[_Dofs] = {0.0};
@@ -280,6 +242,7 @@ namespace robot_controller
                 accLimit[i] = /* this->runSpeed * */ robot->getdqLimit()[i];
             }
             calQuinticPlan(true, this->cycleTime, velLimit, accLimit, robot->getq(), this->q_calQueue, q_dQueue, dq_dQueue, ddq_dQueue);
+            this->nowControllerStatus = RunStatus::run_;
             this->newPlan = false;
         }
     }
@@ -296,6 +259,7 @@ namespace robot_controller
             }
             else
             {
+                // printf("else\n");
                 this->controllerLaw->q_d[i] = q_dQueue[i].front();
                 this->controllerLaw->dq_d[i] = dq_dQueue[i].front();
                 this->controllerLaw->ddq_d[i] = ddq_dQueue[i].front();
@@ -303,7 +267,10 @@ namespace robot_controller
                 this->dq_dQueue[i].pop();
                 this->ddq_dQueue[i].pop();
                 if (q_dQueue[i].empty())
+                {
                     this->q_hold[i] = this->controllerLaw->q_d[i];
+                    this->nowControllerStatus = RunStatus::wait_;
+                }
             }
         }
     }
@@ -422,11 +389,4 @@ namespace robot_controller
             param_debug.orientation_d[i] = this->controllerLaw->orientation_d.toRotationMatrix().eulerAngles(2, 1, 0)[i];
         }
     }
-    template <int _Dofs, typename pubDataType>
-    void Controller<_Dofs, pubDataType>::dynamicSetParameter()
-    {
-        if (controllerLaw.get() != nullptr)
-            controllerLaw->dynamicSetParameter(this->controllerParam, this->time);
-    }
-
 };

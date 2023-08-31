@@ -1,7 +1,7 @@
 #include "communication/communication.h"
 #include "robot/robot.hpp"
 
-struct controllerParam
+struct ControllerParam
 {
     char *paramName = nullptr;
     double value = 0.0;
@@ -11,14 +11,15 @@ template <int _Dofs>
 struct ControllerParamBase
 {
 public:
-    controllerParam jointParam1[_Dofs];
-    controllerParam jointParam2[_Dofs];
-    controllerParam jointParam3[_Dofs];
-    controllerParam cartesianParam1[6];
-    controllerParam cartesianParam2[6];
-    controllerParam cartesianParam3[6];
+    ControllerParam jointParam1[_Dofs];
+    ControllerParam jointParam2[_Dofs];
+    ControllerParam jointParam3[_Dofs];
+    ControllerParam cartesianParam1[6];
+    ControllerParam cartesianParam2[6];
+    ControllerParam cartesianParam3[6];
 };
 
+//
 // 控制律基类
 template <int _Dofs>
 class ControllerLaw
@@ -87,7 +88,8 @@ ControllerLaw<_Dofs>::ControllerLaw(TaskSpace createTaskSpace, std::string creat
     // 全部初始化为0
 }
 
-/*  */
+//
+//
 // 计算力矩控制器
 template <int _Dofs>
 class ComputedTorqueMethod : public ControllerLaw<_Dofs>
@@ -175,7 +177,6 @@ void ComputedTorqueMethod<_Dofs>::dynamicSetParameter(const ControllerParamBase<
     }
     else
     {
-
     }
 }
 template <int _Dofs>
@@ -188,7 +189,9 @@ void ComputedTorqueMethod<_Dofs>::controllerParamRenew(double filterParams)
     this->cartesianKv = filterParams * this->cartesianKv_d + (1.0 - filterParams) * this->cartesianKv;
 }
 
-//**//
+
+//
+//
 // 反步控制器
 template <int _Dofs>
 class Backstepping : public ControllerLaw<_Dofs>
@@ -302,7 +305,8 @@ void Backstepping<_Dofs>::controllerParamRenew(double filterParams)
     this->cartesianK2 = filterParams * this->cartesianK2_d + (1.0 - filterParams) * this->cartesianK2;
 }
 
-//**//
+//
+//
 // PD+重力补偿
 template <int _Dofs>
 class PD : public ControllerLaw<_Dofs>
@@ -389,7 +393,6 @@ void PD<_Dofs>::dynamicSetParameter(const ControllerParamBase<_Dofs> &config, un
     }
     else
     {
-
     }
 }
 template <int _Dofs>
@@ -400,4 +403,34 @@ void PD<_Dofs>::controllerParamRenew(double filterParams)
 
     this->cartesianKp = filterParams * this->cartesianKp_d + (1.0 - filterParams) * this->cartesianKp;
     this->cartesianKv = filterParams * this->cartesianKv_d + (1.0 - filterParams) * this->cartesianKv;
+}
+
+//
+enum ControllerLawType
+{
+    ComputedTorqueMethod_ = 1,
+    Backstepping_ = 2,
+    PD_ = 3,
+};
+template <int _Dofs>
+bool newControllerLaw(std::unique_ptr<ControllerLaw<_Dofs>> &controllerLaw, ControllerLawType controllerLawType, TaskSpace taskSpace)
+{
+    if (controllerLaw != nullptr)
+        controllerLaw.reset(nullptr);
+    switch (controllerLawType)
+    {
+    case ControllerLawType::ComputedTorqueMethod_:
+        controllerLaw = std::make_unique<ComputedTorqueMethod<_Dofs>>(taskSpace);
+        break;
+    case ControllerLawType::Backstepping_:
+        controllerLaw = std::make_unique<Backstepping<_Dofs>>(taskSpace);
+        break;
+    case ControllerLawType::PD_:
+        controllerLaw = std::make_unique<PD<_Dofs>>(taskSpace);
+        break;
+    default:
+        return false;
+        break;
+    }
+    return true;
 }
