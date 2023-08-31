@@ -1,85 +1,52 @@
 #pragma once
-
 #include "planner/planner.hpp"
+#include "controllerLaw/controllerLaw.hpp"
 #include <fstream>
 #include <iostream>
 #include <string>
-#include "communication/communication.h"
 #include <vector>
+// enum ControllerLawType
+// {
+//     Backstepping = 1,
+//     ComputedTorqueMethod = 2,
+//     PD = 3,
+
+// };
+
+// std::map<ControllerLawType, std::string> ControllerLawTypeMap = {
+//     {ControllerLawType::Backstepping, "Backstepping"},
+//     {ControllerLawType::ComputedTorqueMethod, "ComputedTorqueMethod"},
+//     {ControllerLawType::PD, "PD"}
+
+// };
 
 namespace robot_controller
 {
-    // 控制律基类
-    template <int _Dofs, typename dynParamType>
-    class ControllerLaw
-    {
-    public:
-        TaskSpace taskSpace;
-        std::string controllerLawName;
 
-        // 当前时刻误差
-        Eigen::Matrix<double, _Dofs, 1> jointError;
-        Eigen::Matrix<double, _Dofs, 1> djointError;
-        Eigen::Matrix<double, 6, 1> cartesianError;
-        Eigen::Matrix<double, 6, 1> dcartesianError;
+    // template <int _Dofs>
+    // void newControllerLaw(std::unique_ptr<ControllerLaw<_Dofs>> controllerLaw, ControllerLawType type, TaskSpace space)
+    // {
+    //     if (controllerLaw != nullptr)
+    //         controllerLaw.reset(nullptr);
+    //     switch (type)
+    //     {
+    //     case ControllerLawType::Backstepping:
+    //         controllerLaw = std::make_unique<Backstepping<_Dofs>>(space);
+    //         break;
+    //     case ControllerLawType::ComputedTorqueMethod:
+    //         controllerLaw = std::make_unique<ComputedTorqueMethod<_Dofs>>(space);
+    //         break;
+    //     case ControllerLawType::PD:
+    //         controllerLaw = std::make_unique<PD<_Dofs>>(space);
+    //         break;
+    //     default:
 
-        // 当前时刻期望 关节空间
-        Eigen::Matrix<double, _Dofs, 1> q_d;
-        Eigen::Matrix<double, _Dofs, 1> dq_d;
-        Eigen::Matrix<double, _Dofs, 1> ddq_d;
-
-        // 当前时刻期望 笛卡尔空间
-        Eigen::Vector3d position_d;
-        Eigen::Quaterniond orientation_d;
-        Eigen::Vector3d dposition_d;
-        Eigen::Quaterniond dorientation_d;
-        Eigen::Matrix<double, 6, 1> ddX_d; // position+orientation
-
-        // controllerLaw
-        Eigen::Matrix<double, _Dofs, 1> tau_d;
-        Eigen::Matrix<double, _Dofs, 1> qc;
-
-    public:
-        ControllerLaw(const ControllerLaw &) = delete;
-        void operator=(const ControllerLaw &) = delete;
-
-        ControllerLaw();
-        virtual ~ControllerLaw();
-
-        virtual void setControllerLaw(my_robot::Robot<_Dofs> *robot, Eigen::Matrix<double, _Dofs, 1> &tau_d) = 0;
-        virtual void dynamicSetParameter(dynParamType &config, unsigned int time) = 0;
-        virtual void controllerParamRenew(double filterParams) = 0;
-    };
-
-    /***/
-    /***/
-    /***/
-    template <int _Dofs, typename dynParamType>
-    ControllerLaw<_Dofs, dynParamType>::~ControllerLaw()
-    {
-    }
-    template <int _Dofs, typename dynParamType>
-    ControllerLaw<_Dofs, dynParamType>::ControllerLaw() : jointError(Eigen::Matrix<double, _Dofs, 1>::Zero()),
-                                                          djointError(Eigen::Matrix<double, _Dofs, 1>::Zero()),
-                                                          cartesianError(Eigen::Matrix<double, 6, 1>::Zero()),
-                                                          dcartesianError(Eigen::Matrix<double, 6, 1>::Zero()),
-                                                          q_d(Eigen::Matrix<double, _Dofs, 1>::Zero()),
-                                                          dq_d(Eigen::Matrix<double, _Dofs, 1>::Zero()),
-                                                          ddq_d(Eigen::Matrix<double, _Dofs, 1>::Zero()),
-                                                          position_d(Eigen::Matrix<double, 3, 1>::Zero()),
-                                                          orientation_d(Eigen::Quaterniond::Identity()),
-                                                          dposition_d(Eigen::Matrix<double, 3, 1>::Zero()),
-                                                          dorientation_d(Eigen::Quaterniond::Identity()),
-                                                          ddX_d(Eigen::Matrix<double, 6, 1>::Zero()),
-                                                          tau_d(Eigen::Matrix<double, _Dofs, 1>::Zero()),
-                                                          qc(Eigen::Matrix<double, _Dofs, 1>::Zero())
-
-    {
-        // 全部初始化为0
-    }
+    //         break;
+    //     }
+    // }
 
     // _Dofs自由度机器人控制器
-    template <int _Dofs, typename pubDataType, typename dynParamType>
+    template <int _Dofs, typename pubDataType>
     class Controller
     {
 
@@ -90,10 +57,6 @@ namespace robot_controller
         std::ofstream myfile;           // 记录文件io对象
         double filterParams = 0.005;    // 调参滤波参数
         const double cycleTime = 0.001; // 运行周期0.001s
-
-        std::ofstream qfile;   // 记录文件io对象
-        std::ofstream dqfile;  // 记录文件io对象
-        std::ofstream ddqfile; // 记录文件io对象
 
         // 点动参数
         unsigned int jogSign = 0;
@@ -107,16 +70,15 @@ namespace robot_controller
         Eigen::Matrix<double, _Dofs, 1> q_hold;
         double runSpeed = 0;
         double runSpeed_d = 0;
-        double Tf = 0;
 
         // 急停参数
         double stopDistance = 0.1;
         double stopTime = 0.1;
 
         // 当前运行状态和工作空间
-        unsigned int nowCommandNum = 0;       // 当前命令号
-        ControllerStatus controllerStatus_d;  // 目标状态
-        ControllerStatus nowControllerStatus; // 当前状态
+        unsigned int nowCommandNum = 0;                  // 当前命令号
+        RunStatus controllerStatus_d = RunStatus::stop;  // 目标状态
+        RunStatus nowControllerStatus = RunStatus::stop; // 当前状态
 
         // 运行队列
         std::vector<std::queue<double>> q_dQueue{_Dofs};
@@ -133,9 +95,11 @@ namespace robot_controller
         bool connectStatus = false;
         struct RobotData *robotDataBuff = nullptr;
         struct ControllerCommand *controllerCommandBUff = nullptr;
+        struct ControllerState *controllerStateBUff = nullptr;
 
         //  控制律
-        std::unique_ptr<ControllerLaw<_Dofs, dynParamType>> controllerLaw;
+        std::unique_ptr<ControllerLaw<_Dofs>> controllerLaw;
+        ControllerParamBase<_Dofs> controllerParam;
 
     public:
         Controller(const Controller &) = delete;
@@ -146,10 +110,10 @@ namespace robot_controller
 
         // api
         void setRecord(int recordPeriod);
-        std::string getControllerLawName();
+        const std::string &getControllerLawName();
 
         // init
-        void init(int recordPeriod);
+        void init(int recordPeriod, my_robot::Robot<_Dofs> *robot);
 
         // run
         void updateTime();
@@ -163,39 +127,51 @@ namespace robot_controller
         //
         void recordData(my_robot::Robot<_Dofs> *robot);
         void pubData(pubDataType &param_debug, my_robot::Robot<_Dofs> *robot);
-        void dynamicSetParameter(dynParamType &config); // 封装
+        void dynamicSetParameter();
     };
 
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    Controller<_Dofs, pubDataType, dynParamType>::~Controller()
+    template <int _Dofs, typename pubDataType>
+    Controller<_Dofs, pubDataType>::~Controller()
     {
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    Controller<_Dofs, pubDataType, dynParamType>::Controller() : q_calQueue(Eigen::Matrix<double, _Dofs, 1>::Zero()),
-                                                                 q_hold(Eigen::Matrix<double, _Dofs, 1>::Zero())
+    template <int _Dofs, typename pubDataType>
+    Controller<_Dofs, pubDataType>::Controller() : q_calQueue(Eigen::Matrix<double, _Dofs, 1>::Zero()),
+                                                   q_hold(Eigen::Matrix<double, _Dofs, 1>::Zero())
     {
     }
 
     // API
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::setRecord(int recordPeriod)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::setRecord(int recordPeriod)
     {
         this->recordPeriod = recordPeriod;
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    std::string Controller<_Dofs, pubDataType, dynParamType>::getControllerLawName()
+    template <int _Dofs, typename pubDataType>
+    const std::string &Controller<_Dofs, pubDataType>::getControllerLawName()
     {
         if (controllerLaw != nullptr)
-            return this->controllerLaw.controllerLawName;
+            return this->controllerLaw->controllerLawName;
     }
 
     // init
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::init(int recordPeriod)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::init(int recordPeriod, my_robot::Robot<_Dofs> *robot)
     {
         // 设置数据记录周期
         setRecord(this->recordPeriod);
-
+        this->q_hold = robot->getq();
+        for (int i = 0; i < _Dofs; i++)
+        {
+            controllerParam.jointParam1[i].value = 10;
+            controllerParam.jointParam2[i].value = 1;
+        }
+        for (int i = 0; i < 6; i++)
+        {
+            controllerParam.cartesianParam1[i].value = 10;
+            controllerParam.cartesianParam2[i].value = 1;
+        }
+        dynamicSetParameter();
+        
         // first task
         for (int i = 0; i < _Dofs; i++)
         {
@@ -205,37 +181,33 @@ namespace robot_controller
         this->newPlan = true;
 
         // 建立通信 建立数据映射
-        if (this->communicationModel.createConnect((key_t)SM_ID, (key_t)MS_ID, this->robotDataBuff, this->controllerCommandBUff))
+        if (this->communicationModel.createConnect((key_t)SM_ID, (key_t)MS_ID, this->robotDataBuff,
+                                                   this->controllerCommandBUff, this->controllerStateBUff))
         {
             printf("通信模型建立成功\n");
         }
-
-        this->controllerCommandBUff->controllerStatus = this->controllerStatus_d;
-        this->controllerCommandBUff->jogSign = this->jogSign;
-        this->controllerCommandBUff->jogSpeed = this->jogSpeed_d;
-        this->controllerCommandBUff->runSpeed = this->runSpeed_d;
-        this->controllerCommandBUff->commandNum = this->nowCommandNum;
     }
 
     // run
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::updateTime()
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::updateTime()
     {
         this->time++;
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::controllerParamRenew()
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::controllerParamRenew()
     {
         if (this->controllerLaw != nullptr)
             this->controllerLaw->controllerParamRenew(this->filterParams);
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::communication(my_robot::Robot<_Dofs> *robot)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::communication(my_robot::Robot<_Dofs> *robot)
     {
         this->connectStatus = this->communicationModel.comSendMessage();
 
         if (!this->connectStatus)
             return;
+
         // send
         for (int i = 0; i < _Dofs; i++)
         {
@@ -249,9 +221,10 @@ namespace robot_controller
             this->robotDataBuff->position[i] = robot->getdOrientation().toRotationMatrix().eulerAngles(2, 1, 0)[i];
             this->robotDataBuff->orientation[i] = robot->getdPosition()[i];
         }
+        this->controllerStateBUff->controllerStatus = this->nowControllerStatus;
 
-        // read 
-        this->controllerStatus_d = this->controllerCommandBUff->controllerStatus;
+        // read
+        this->controllerStatus_d = this->controllerCommandBUff->controllerStatus_d;
         this->jogSign = this->controllerCommandBUff->jogSign;
         this->jogSpeed_d = this->controllerCommandBUff->jogSpeed;
         this->runSpeed_d = this->controllerCommandBUff->runSpeed;
@@ -269,35 +242,35 @@ namespace robot_controller
             this->nowCommandNum = this->controllerCommandBUff->commandNum;
         }
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::updateStatus(my_robot::Robot<_Dofs> *robot)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::updateStatus(my_robot::Robot<_Dofs> *robot)
     {
         if (!this->connectStatus)
             return;
 
-        if (this->nowControllerStatus != this->controllerStatus_d)
+        if (this->nowControllerStatus != this->controllerStatus_d) // 切换状态
         {
-            if (this->controllerStatus_d == ControllerStatus::stop)
+            if (this->controllerStatus_d == RunStatus::stop)
             {
                 // calStopQueue(robot);
             }
-            if (this->controllerStatus_d == ControllerStatus::run)
+            if (this->controllerStatus_d == RunStatus::run)
             {
                 //
             }
             this->nowControllerStatus = this->controllerStatus_d;
         }
-        if (this->jogSpeed != this->jogSpeed_d)
+        if (this->jogSpeed != this->jogSpeed_d) // 更改速度
         {
             // cal
             this->jogSpeed = this->jogSpeed_d;
         }
-        if (this->runSpeed != this->runSpeed_d)
+        if (this->runSpeed != this->runSpeed_d) // 更改速度
         {
             // recal
             // this->runSpeed = this->runSpeed_d;
         }
-        if (this->newPlan)
+        if (this->newPlan) // 新的规划
         {
             double velLimit[_Dofs] = {0.0};
             double accLimit[_Dofs] = {0.0};
@@ -310,9 +283,8 @@ namespace robot_controller
             this->newPlan = false;
         }
     }
-
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::calDesireNext(my_robot::Robot<_Dofs> *robot)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::calDesireNext(my_robot::Robot<_Dofs> *robot)
     {
         for (int i = 0; i < _Dofs; i++)
         {
@@ -335,8 +307,8 @@ namespace robot_controller
             }
         }
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::calError(my_robot::Robot<_Dofs> *robot)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::calError(my_robot::Robot<_Dofs> *robot)
     {
         if (controllerLaw.get() == nullptr)
             return;
@@ -366,16 +338,16 @@ namespace robot_controller
         this->controllerLaw->cartesianError.tail(3) << derror_quaternion.x(), derror_quaternion.y(), derror_quaternion.z();
         this->controllerLaw->cartesianError.tail(3) << robot->getT().rotation() * this->controllerLaw->cartesianError.tail(3);
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::setControllerLaw(my_robot::Robot<_Dofs> *robot, Eigen::Matrix<double, _Dofs, 1> &tau_d)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::setControllerLaw(my_robot::Robot<_Dofs> *robot, Eigen::Matrix<double, _Dofs, 1> &tau_d)
     {
         if (controllerLaw.get() != nullptr)
             controllerLaw->setControllerLaw(robot, tau_d);
     }
 
     //
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::recordData(my_robot::Robot<_Dofs> *robot)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::recordData(my_robot::Robot<_Dofs> *robot)
     {
         if (controllerLaw.get() == nullptr)
             return;
@@ -424,8 +396,8 @@ namespace robot_controller
         // this->myfile << "tau_d: " << this->controllerLaw->tau_d.transpose() << "\n";
         // this->myfile << "-------------------" << std::endl;
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::pubData(pubDataType &param_debug, my_robot::Robot<_Dofs> *robot)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::pubData(pubDataType &param_debug, my_robot::Robot<_Dofs> *robot)
     {
         if (controllerLaw.get() == nullptr)
             return;
@@ -450,11 +422,11 @@ namespace robot_controller
             param_debug.orientation_d[i] = this->controllerLaw->orientation_d.toRotationMatrix().eulerAngles(2, 1, 0)[i];
         }
     }
-    template <int _Dofs, typename pubDataType, typename dynParamType>
-    void Controller<_Dofs, pubDataType, dynParamType>::dynamicSetParameter(dynParamType &config)
+    template <int _Dofs, typename pubDataType>
+    void Controller<_Dofs, pubDataType>::dynamicSetParameter()
     {
         if (controllerLaw.get() != nullptr)
-            controllerLaw->dynamicSetParameter(config, this->time);
+            controllerLaw->dynamicSetParameter(this->controllerParam, this->time);
     }
 
 };

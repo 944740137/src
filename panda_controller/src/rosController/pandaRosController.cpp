@@ -102,6 +102,7 @@ namespace panda_controller
 
     return true;
   }
+  
   void PandaController::starting(const ros::Time & /*time*/)
   {
     std::cout << "[robotController] start1:panda_controller\n";
@@ -111,12 +112,16 @@ namespace panda_controller
 
     // 初值设置
     franka::RobotState initial_state = state_handle_->getRobotState();
-    Eigen::Matrix<double, 7, 1> q_initial = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
-    Eigen::Affine3d transform(Eigen::Matrix4d::Map(initial_state.O_T_EE.data())); // 齐次变换矩阵
-    Eigen::Vector3d position(transform.translation());
-    Eigen::Quaterniond orientation = Eigen::Quaterniond(transform.rotation());
-    pandaStart(q_initial, position, orientation, 1);
+    this->q = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
+    this->theta = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.theta.data());
+    this->dq = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.dq.data());
+    this->tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.tau_J_d.data());
+    this->transform = Eigen::Affine3d(Eigen::Matrix4d::Map(initial_state.O_T_EE.data())); // 齐次变换矩阵
+    this->position = Eigen::Vector3d(transform.translation());
+    this->orientation = Eigen::Quaterniond(transform.rotation());
+    pandaStart(this->q, this->theta, this->dq, this->tau_J_d, this->position, this->orientation, this->transform, 1);
   }
+
   void PandaController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
     // 获取传感器数据
@@ -165,7 +170,7 @@ namespace panda_controller
 
   void PandaController::controlParamCallback(panda_controller::panda_controller_paramConfig &config, uint32_t /*level*/)
   {
-    pController->dynamicSetParameter(config);
+    // pController->dynamicSetParameter(config);
   }
 
 } // namespace panda_controller

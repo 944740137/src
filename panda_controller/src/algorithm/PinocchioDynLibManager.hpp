@@ -25,7 +25,7 @@ public:
     PinocchioDynLibManager() = delete;
     virtual ~PinocchioDynLibManager();
 
-    explicit PinocchioDynLibManager(std::string urdf);
+    explicit PinocchioDynLibManager(const std::string urdf);
 
     virtual pinocchio::Model* getpModel();
     virtual pinocchio::Data* getpData();
@@ -44,7 +44,7 @@ PinocchioDynLibManager<_Dofs>::~PinocchioDynLibManager()
 {
 }
 template <int _Dofs>
-PinocchioDynLibManager<_Dofs>::PinocchioDynLibManager(std::string urdf)
+PinocchioDynLibManager<_Dofs>::PinocchioDynLibManager(const std::string urdf)
 {
     static pinocchio::Model model;
     static pinocchio::Data data;

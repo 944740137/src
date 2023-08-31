@@ -26,7 +26,8 @@ public:
     void operator=(const Communication &) = delete;
 
     bool checkConnect();
-    bool createConnect(key_t messageKey, key_t sharedMemorykey, RobotData *&robotData, ControllerCommand *&controllerCommand);
+    bool createConnect(key_t messageKey, key_t sharedMemorykey, RobotData *&robotData,
+                       ControllerCommand *&controllerCommand, ControllerState *&controllerState);
     bool comSendMessage();
     bool comRecvMessage();
     bool closeConnect();

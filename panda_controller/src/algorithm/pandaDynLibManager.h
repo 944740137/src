@@ -12,7 +12,7 @@ public:
   pandaDynLibManager() = delete;
   virtual ~pandaDynLibManager();
 
-  explicit pandaDynLibManager(std::string urdf);
+  explicit pandaDynLibManager(const std::string urdf);
   
   void forwardKinematics(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q);
   void updateFramePlacements(pinocchio::Model &model, pinocchio::Data &data);

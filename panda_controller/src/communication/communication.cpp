@@ -20,7 +20,8 @@ bool Communication::checkConnect()
     }
     return this->isConnect;
 }
-bool Communication::createConnect(key_t messageKey, key_t sharedMemorykey, RobotData *&robotData, ControllerCommand *&controllerCommand)
+bool Communication::createConnect(key_t messageKey, key_t sharedMemorykey, RobotData *&robotData,
+                                  ControllerCommand *&controllerCommand, ControllerState *&controllerState)
 {
     void *shared_memory = nullptr;
     robotData = &(this->messageBuff.robotData);
@@ -45,8 +46,10 @@ bool Communication::createConnect(key_t messageKey, key_t sharedMemorykey, Robot
 
     this->sharedMemoryBuff = (struct SharedMemory *)shared_memory;
     this->sharedMemoryBuff->slaveHeartbeat = 0;
+    this->HeartBeatRecord = this->sharedMemoryBuff->masterHeartbeat;
 
-    controllerCommand = &(this->sharedMemoryBuff->controllerData);
+    controllerCommand = &(this->sharedMemoryBuff->controllerCommand);
+    controllerState = &(this->sharedMemoryBuff->controllerState);
 
     this->msgid = msgget((key_t)messageKey, 0666 | IPC_CREAT);
     if (this->msgid == -1)

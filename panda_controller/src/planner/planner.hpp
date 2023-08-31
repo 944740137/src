@@ -1,6 +1,7 @@
-#include "robot/robot.hpp"
 #include <cmath>
 #include <queue>
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 template <int _Dofs>
 void calQuinticPlanTime(bool isCoordinated, double *maxVel, double *maxAcc, double *T,

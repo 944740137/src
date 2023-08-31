@@ -81,9 +81,9 @@ add_library(panda_controller
   src/robotController/pandaController.cpp
   src/rosController/pandaRosController.cpp
   
-  src/controllerLaw/computedTorqueMethod.cpp
-  src/controllerLaw/backstepping.cpp
-  src/controllerLaw/PD.cpp
+  # src/controllerLaw/computedTorqueMethod.cpp
+  # src/controllerLaw/backstepping.cpp
+  # src/controllerLaw/PD.cpp
 )
 
 

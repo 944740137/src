@@ -1,7 +1,7 @@
 #include "pandaController.h"
 #include <sys/msg.h>
 Robot7 *pPanda = nullptr;
-Robot7Controller *pController = nullptr;
+PandaController *pController = nullptr;
 
 void pandaInit()
 {
@@ -12,8 +12,16 @@ void pandaInit()
     }
     if (pController == nullptr)
     {
-        pController = new Robot7Controller();
-        pController->controllerLaw = std::make_unique<panda_controller::ComputedTorqueMethod>(TaskSpace::jointSpace);
+        pController = new PandaController();
+        // newControllerLaw(pController->controllerLaw, ComputedTorqueMethod, TaskSpace::jointSpace);
+        // newControllerLaw(pController->controllerLaw, Backstepping, TaskSpace::jointSpace)
+        // newControllerLaw(pController->controllerLaw, PD, TaskSpace::jointSpace)
+
+
+        pController->controllerLaw = std::make_unique<PandaComputedTorqueMethodController>(TaskSpace::jointSpace);
+        // pController->controllerLaw = std::make_unique<PandaBacksteppingController>(TaskSpace::jointSpace);
+        // pController->controllerLaw = std::make_unique<PandaPDController>(TaskSpace::jointSpace);
+
         // pController->controllerLaw = std::make_unique<panda_controller::Backstepping>(TaskSpace::jointSpace);
         // pController->controllerLaw = std::make_unique<panda_controller::PD>(TaskSpace::jointSpace);
     }
@@ -23,12 +31,17 @@ void pandaInit()
     }
 }
 
-void pandaStart(const Eigen::Matrix<double, DIM, 1> &q0, const Eigen::Vector3d &position,
-                const Eigen::Quaterniond &orientation, int recordPeriod)
+void pandaStart(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &theta,
+                const Eigen::Matrix<double, DIM, 1> &dq, const Eigen::Matrix<double, DIM, 1> &tau,
+                const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, const Eigen::Affine3d &TO2E, int recordPeriod)
 {
-    pController->init(recordPeriod);
-    pPanda->setq0(q0);
+    pPanda->setq0(q);
     pPanda->setPosAndOri0(position, orientation);
+
+    pPanda->updateJointData(q, theta, dq, tau);
+    pPanda->updateEndeffectorData(position, orientation, TO2E);
+
+    pController->init(recordPeriod, pPanda);
 }
 
 void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &dq,
@@ -36,18 +49,18 @@ void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double
               const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, const Eigen::Affine3d &TO2E,
               Eigen::Matrix<double, DIM, 1> &tau_d, panda_controller::paramForDebug &param_debug, Eigen::Matrix<double, DIM, 1> &q_d)
 {
-    // 控制器更新时间
-    pController->updateTime();
-
     // 机器人更新传感器数据
     pPanda->updateJointData(q, theta, dq, tau);
     pPanda->updateEndeffectorData(position, orientation, TO2E);
     pPanda->calculation(pController->controllerLaw->ddq_d); // pinocchio
 
+    // 控制器更新时间
+    pController->updateTime();
+
     //  通信，读取缓存
     pController->communication(pPanda);
     //  根据缓存更新状态
-    pController->updateStatus(pPanda); 
+    pController->updateStatus(pPanda);
 
     // 根据队列计算当前期望和误差计算输出力矩
     pController->calDesireNext(pPanda); // 取出队头作为当前期望
