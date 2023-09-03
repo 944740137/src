@@ -23,13 +23,14 @@
 
 #include "franka_example_controllers/trajectory.h"
 
-    namespace franka_example_controllers {
+namespace franka_example_controllers
+{
 
-class NullSpaceImpedanceMBObserverController : public controller_interface::MultiInterfaceController<
-                                                franka_hw::FrankaModelInterface,
-                                                hardware_interface::EffortJointInterface,
-                                                franka_hw::FrankaStateInterface>
- {
+  class NullSpaceImpedanceMBObserverController : public controller_interface::MultiInterfaceController<
+                                                     franka_hw::FrankaModelInterface,
+                                                     hardware_interface::EffortJointInterface,
+                                                     franka_hw::FrankaStateInterface>
+  {
   public:
     bool init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle) override;
     void starting(const ros::Time &) override;
@@ -73,6 +74,7 @@ class NullSpaceImpedanceMBObserverController : public controller_interface::Mult
     Eigen::Matrix<double, 7, 1> q = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> dq = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> tau_J_d = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> tau_J = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> tau_d = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Affine3d T;
     Eigen::Matrix<double, 6, 1> X = Eigen::MatrixXd::Zero(6, 1);
@@ -138,6 +140,8 @@ class NullSpaceImpedanceMBObserverController : public controller_interface::Mult
     Eigen::Matrix<double, 3, 3> Kv_d = Eigen::MatrixXd::Identity(3, 3);
     Eigen::Matrix<double, 3, 3> Kp = Eigen::MatrixXd::Identity(3, 3);
     Eigen::Matrix<double, 3, 3> Kp_d = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 7, 7> KI = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 7> KI_d = Eigen::MatrixXd::Identity(7, 7);
 
     // 零空间任务
     Eigen::Matrix<double, 4, 4> Bv = Eigen::MatrixXd::Identity(4, 4);
@@ -148,8 +152,8 @@ class NullSpaceImpedanceMBObserverController : public controller_interface::Mult
     Eigen::Matrix<double, 7, 1> task2_q_d = Eigen::MatrixXd::Zero(7, 1);
 
     // 观测器
+    Eigen::Matrix<double, 7, 1> r = Eigen::MatrixXd::Zero(7, 1);
 
-  
-};
+  };
 
-}  // namespace franka_example_controllers
+} // namespace franka_example_controllers

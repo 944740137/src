@@ -123,20 +123,26 @@ namespace franka_example_controllers
 
     this->task2_q_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
 
-    this->myfile.open("/home/wd/log/franka/nullSpace/NullSpaceImpedanceEBObserverController.txt");
-    this->myfile << "NullSpaceImpedanceEBObserverController" << std::endl;
+    this->myfile.open("/home/wd/log/franka/nullSpace/NullSpaceImpedanceMBObserverController.txt");
+    this->myfile << "NullSpaceImpedanceMBObserverController" << std::endl;
     this->myfile << "编译日期:" << __DATE__ << "\n";
     this->myfile << "编译时刻:" << __TIME__ << "\n";
-    this->myfile << "误差观测器" << std::endl;
+    this->myfile << "动量观测器" << std::endl;
     if (pinInteractive == nullptr)
       pinInteractive = new pinLibInteractive();
   }
 
   void NullSpaceImpedanceMBObserverController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
-
+    static Eigen::Matrix<double, 7, 1> tmp1 = Eigen::MatrixXd::Zero(7, 1); // 待积分
+    static Eigen::Matrix<double, 7, 1> tmp2 = Eigen::MatrixXd::Zero(7, 1); // 待积分
+    static Eigen::Matrix<double, 7, 1> tmpI = Eigen::MatrixXd::Zero(7, 1); // 累加
     upDateParam();
     recordData();
+    this->myfile << "tmp1: " << tmp1.transpose() << "\n";
+    this->myfile << "tmp2: " << tmp2.transpose() << "\n";
+    this->myfile << "tmpI: " << tmpI.transpose() << "\n";
+    this->myfile << "------------------" << std::endl;
 
     double r1 = 0.1;
     if (time == 0)
@@ -155,9 +161,9 @@ namespace franka_example_controllers
     // 轨迹和误差  3轨迹最差
     static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
     // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
     // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
 
     // 伪逆矩阵计算
     Eigen::MatrixXd J_pinv;
@@ -193,21 +199,18 @@ namespace franka_example_controllers
     }
     this->dZ_inv = this->S2_dot;
 
-    bool ifPDplus = true; 
-    double r = 0.01;
+    bool ifPDplus = true;
 
     // 命令加速度与输入力矩
     dx = dX.block(0, 0, 3, 1);
     Lambdax_inv = (J1 * M.inverse() * J1.transpose());
     ux = (J1_pinv.transpose() * C_pin - Lambdax_inv.inverse() * dJ1) * J1_pinv;
 
-    tau_msr = tau_msr + dtau_msr * t.toSec();
-
-    // if (ifPDplus)
-    //   dtau_msr = -Gamma_inv * J1_pinv * (dXerror.block(0, 0, 3, 1) + r * (1 / (1 + Xerror.block(0, 0, 3, 1).norm())) * Xerror.block(0, 0, 3, 1));
-    // else
-    //   dtau_msr = -Gamma_inv * J1_pinv * s;
-
+    tmp2 = tau_d + C_pin.transpose() * dq + r;
+    tmpI = tmpI + 0.5 * (tmp1 + tmp2) * t.toSec();
+    tmp1 = tmp2;
+    r = KI * (M * dq - tmpI);
+    tau_msr = -r;
     F_msr = J_pinv.transpose() * tau_msr;
 
     Lambdav = (Z.transpose() * M * Z);
@@ -215,9 +218,9 @@ namespace franka_example_controllers
     v = Z_inv * dq;
 
     if (ifPDplus)
-      ddxc = Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) + J1_pinv.transpose() * tau_msr);
+      ddxc = Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) + J1_pinv.transpose() * r);
     else
-      ddxc = ddX_d.block(0, 0, 3, 1) + Kv * dXerror.block(0, 0, 3, 1) + Kp * Xerror.block(0, 0, 3, 1) + Lambdax_inv * J1_pinv.transpose() * tau_msr;
+      ddxc = ddX_d.block(0, 0, 3, 1) + Kv * dXerror.block(0, 0, 3, 1) + Kp * Xerror.block(0, 0, 3, 1) - Lambdax_inv * J1_pinv.transpose() * r;
 
     dvc = Lambdav.inverse() * ((uv + Bv) * (-v) + Z.transpose() * Kd * (task2_q_d - q));
     ddqc = J1_pinv * (ddxc - dJ1 * dq) + Z * (dvc - dZ_inv * dq);
@@ -226,9 +229,8 @@ namespace franka_example_controllers
 
     // 记录数据
     this->time++;
-    this->myfile << "dXerror: " << dXerror.transpose() << "\n";
-    this->myfile << "Xerror: " << Xerror.transpose() << "\n";
-    this->myfile << "Xerror.block(0, 0, 3, 1).norm(): " << Xerror.block(0, 0, 3, 1).norm() << "\n";
+
+    // this->myfile << "r" << r.block(0, 0, 3, 1).norm() << "\n";
 
     // 画图
     for (int i = 0; i < 7; i++)
@@ -284,6 +286,7 @@ namespace franka_example_controllers
     this->robot_state = state_handle_->getRobotState();
     this->q = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
     this->dq = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
+    this->tau_J = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J.data());
     this->tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
     this->T = Eigen::Affine3d(Eigen::Matrix4d::Map(robot_state.O_T_EE.data())); // 齐次变换矩阵
     this->X << Eigen::Vector3d(this->T.translation()), Eigen::Quaterniond(this->T.rotation()).toRotationMatrix().eulerAngles(2, 1, 0);
@@ -298,28 +301,11 @@ namespace franka_example_controllers
 
   void NullSpaceImpedanceMBObserverController::recordData()
   {
-
-    // this->myfile << "Z: \n";
-    // this->myfile << this->Z << "\n";
-    // this->myfile << "Z_inv: \n";
-    // this->myfile << this->Z_inv << "\n";
-    // this->myfile << "dZ_inv: \n";
-    // this->myfile << this->dZ_inv << "\n";
-    // this->myfile << "Lambdax_inv: \n";
-    // this->myfile << this->Lambdax_inv << "\n";
-    // this->myfile << "Lambdav: \n";
-    // this->myfile << this->Lambdav << "\n";
-    // this->myfile << "ux: \n";
-    // this->myfile << this->ux << "\n";
-    // this->myfile << "uv: \n";
-    // this->myfile << this->uv << "\n";
-
+    this->myfile << "time: " << this->time << "_\n";
     this->myfile << "tau_msr: " << this->tau_msr.transpose() << "\n";
-    this->myfile << "dtau_msr: " << this->dtau_msr.transpose() << "\n";
-    this->myfile << "ddxc: " << this->ddxc.transpose() << "\n";
-    this->myfile << "dvc: " << this->dvc.transpose() << "\n";
-
-    this->myfile << "------------------" << std::endl;
+    this->myfile << "r: " << this->r.transpose() << "\n";
+    // this->myfile << "ddxc: " << this->ddxc.transpose() << "\n";
+    // this->myfile << "dvc: " << this->dvc.transpose() << "\n";
   }
 
   void NullSpaceImpedanceMBObserverController::complianceParamCallback(franka_example_controllers::nullspace_impedance_controller_paramConfig &config, uint32_t /*level*/)
@@ -328,12 +314,14 @@ namespace franka_example_controllers
     {
       Kp << config.Kp * Eigen::MatrixXd::Identity(3, 3);
       Kv << config.Kv * Eigen::MatrixXd::Identity(3, 3);
+      KI << config.KI * Eigen::MatrixXd::Identity(7, 7);
 
       PD_D << config.mbPD_D * Eigen::MatrixXd::Identity(3, 3);
       PD_K << config.mbPD_K * Eigen::MatrixXd::Identity(3, 3);
     }
     Kp_d << config.Kp * Eigen::MatrixXd::Identity(3, 3);
     Kv_d << config.Kv * Eigen::MatrixXd::Identity(3, 3);
+    KI_d << config.KI * Eigen::MatrixXd::Identity(7, 7);
 
     PD_D_d << config.mbPD_D * Eigen::MatrixXd::Identity(3, 3);
     PD_K_d << config.mbPD_K * Eigen::MatrixXd::Identity(3, 3);
