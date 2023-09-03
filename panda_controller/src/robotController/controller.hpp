@@ -8,6 +8,26 @@
 
 namespace robot_controller
 {
+    auto setDesiredValues = [](double &q_d, double &dq_d, double &ddq_d,
+                               std::queue<double> &qQueue, std::queue<double> &dqQueue, std::queue<double> &ddqQueue)
+    {
+        q_d = qQueue.front();
+        dq_d = dqQueue.front();
+        ddq_d = ddqQueue.front();
+        qQueue.pop();
+        dqQueue.pop();
+        ddqQueue.pop();
+    };
+    auto checkIsEmpty = [](std::queue<double> &qQueue, double &q_hold, double &q_d, int dof, int maxDof, RunStatus &status)
+    {
+        if (qQueue.empty())
+        {
+            q_hold = q_d;
+            if (dof == maxDof)
+                status = RunStatus::wait_;
+        }
+    };
+    
     // _Dofs自由度机器人控制器
     template <int _Dofs, typename pubDataType>
     class Controller
@@ -15,11 +35,12 @@ namespace robot_controller
 
     public:
         // debug，绘图
-        int recordPeriod = 1;           // 数据记录周期
-        unsigned int time = 0;          // 当前时刻
-        std::ofstream myfile;           // 记录文件io对象
-        double filterParams = 0.005;    // 调参滤波参数
-        const double cycleTime = 0.001; // 运行周期0.001s
+        int recordPeriod = 1;                   // 数据记录周期
+        unsigned int time = 0;                  // 当前时刻
+        std::ofstream myfile;                   // 记录文件io对象
+        double filterParams = 0.005;            // 调参滤波参数
+        const double cycleTime = 0.001;         // 运行周期0.001s
+        Eigen::Matrix<double, _Dofs, 1> q_hold; // 维持位置
 
         // 点动参数
         unsigned int jogSign = 0;
@@ -27,20 +48,21 @@ namespace robot_controller
         double jogSpeed_d = 0;
 
         // 规划参数
+        unsigned int nowPlanTaskNum = 0; // 当前规划任务号
         bool newPlan = false;
         TaskSpace plannerTaskSpace = TaskSpace::jointSpace;
         Eigen::Matrix<double, _Dofs, 1> q_calQueue;
-        Eigen::Matrix<double, _Dofs, 1> q_hold;
         double runSpeed = 0;
         double runSpeed_d = 0;
 
         // 急停参数
-        double stopDistance = 0.1;
-        double stopTime = 0.1;
+        unsigned int nowStopTaskNum = 0; // 当前急停任务号
+        bool newStop = false;
 
-        // 当前运行状态和工作空间
-        unsigned int nowCommandNum = 0;                   // 当前规划任务号
-        RunStatus controllerStatus_d = RunStatus::wait_;  // 目标状态
+        // double stopDistance = 0.1;
+        // double stopTime = 0.1;
+
+        // 当前运行状态
         RunStatus nowControllerStatus = RunStatus::wait_; // 当前状态
 
         // 运行队列
@@ -54,8 +76,8 @@ namespace robot_controller
         std::vector<std::queue<double>> ddq_stopQueue{_Dofs};
 
         // 通讯
-        Communication communicationModel;
         bool connectStatus = false;
+        Communication communicationModel;
         struct RobotData *robotDataBuff = nullptr;
         struct ControllerCommand *controllerCommandBUff = nullptr;
         struct ControllerState *controllerStateBUff = nullptr;
@@ -120,9 +142,10 @@ namespace robot_controller
     template <int _Dofs, typename pubDataType>
     void Controller<_Dofs, pubDataType>::changeControllerLaw()
     {
-        // newControllerLaw(controllerLaw, ControllerLawType::ComputedTorqueMethod_, plannerTaskSpace);
-        newControllerLaw(controllerLaw, ControllerLawType::Backstepping_, plannerTaskSpace);
+        newControllerLaw(controllerLaw, ControllerLawType::ComputedTorqueMethod_, plannerTaskSpace);
+        // newControllerLaw(controllerLaw, ControllerLawType::Backstepping_, plannerTaskSpace);
         // newControllerLaw(controllerLaw, ControllerLawType::PD_, plannerTaskSpace);
+        dynamicSetParameter();
     }
     template <int _Dofs, typename pubDataType>
     void Controller<_Dofs, pubDataType>::dynamicSetParameter()
@@ -140,16 +163,15 @@ namespace robot_controller
         this->q_hold = robot->getq();
         for (int i = 0; i < _Dofs; i++)
         {
-            controllerParam.jointParam1[i].value = 10;
-            controllerParam.jointParam2[i].value = 1;
+            controllerParam.jointParam1[i].value = 50;
+            controllerParam.jointParam2[i].value = 5;
         }
         for (int i = 0; i < 6; i++)
         {
-            controllerParam.cartesianParam1[i].value = 10;
-            controllerParam.cartesianParam2[i].value = 1;
+            controllerParam.cartesianParam1[i].value = 50;
+            controllerParam.cartesianParam2[i].value = 5;
         }
         changeControllerLaw();
-        dynamicSetParameter();
 
         // 建立通信 建立数据映射
         if (this->communicationModel.createConnect((key_t)SM_ID, (key_t)MS_ID, this->robotDataBuff,
@@ -157,9 +179,11 @@ namespace robot_controller
         {
             printf("通信模型建立成功\n");
         }
-        this->nowCommandNum = this->controllerCommandBUff->commandNum;
+        this->nowStopTaskNum = this->controllerCommandBUff->stopTaskNum;
+        this->nowPlanTaskNum = this->controllerCommandBUff->planTaskNum;
+        this->jogSpeed = this->controllerCommandBUff->jogSpeed;
+        this->runSpeed = this->controllerCommandBUff->runSpeed;
         this->controllerStateBUff->controllerStatus = this->nowControllerStatus;
-
     }
 
     // run
@@ -198,11 +222,10 @@ namespace robot_controller
         this->controllerStateBUff->controllerStatus = this->nowControllerStatus;
 
         // read
-        this->controllerStatus_d = this->controllerCommandBUff->controllerStatus_d;
         this->jogSign = this->controllerCommandBUff->jogSign;
         this->jogSpeed_d = this->controllerCommandBUff->jogSpeed;
         this->runSpeed_d = this->controllerCommandBUff->runSpeed;
-        if (this->nowCommandNum != this->controllerCommandBUff->commandNum)
+        if (this->nowPlanTaskNum != this->controllerCommandBUff->planTaskNum) // 新的规划任务
         {
             this->plannerTaskSpace = this->controllerCommandBUff->plannerTaskSpace;
             for (int i = 0; i < _Dofs; i++)
@@ -213,7 +236,7 @@ namespace robot_controller
             {
             }
             this->newPlan = true;
-            this->nowCommandNum = this->controllerCommandBUff->commandNum;
+            this->nowPlanTaskNum = this->controllerCommandBUff->planTaskNum;
         }
     }
     template <int _Dofs, typename pubDataType>
@@ -224,11 +247,13 @@ namespace robot_controller
 
         if (this->jogSpeed != this->jogSpeed_d) // 更改速度
         {
+            this->jogSpeed_d = std::max(0.01, std::min(1.0, this->jogSpeed_d)); // 1%和100%
             // recal
             this->jogSpeed = this->jogSpeed_d;
         }
         if (this->runSpeed != this->runSpeed_d) // 更改速度
         {
+            this->runSpeed_d = std::max(0.01, std::min(1.0, this->runSpeed_d));
             // recal
             this->runSpeed = this->runSpeed_d;
         }
@@ -242,35 +267,39 @@ namespace robot_controller
                 accLimit[i] = /* this->runSpeed * */ robot->getdqLimit()[i];
             }
             calQuinticPlan(true, this->cycleTime, velLimit, accLimit, robot->getq(), this->q_calQueue, q_dQueue, dq_dQueue, ddq_dQueue);
-            this->nowControllerStatus = RunStatus::run_;
-            this->newPlan = false;
+            this->nowControllerStatus = RunStatus::run_; // 开始运动
         }
+        if (this->newStop && this->nowControllerStatus == RunStatus::run_) // 急停规划
+        {
+        }
+        this->newPlan = false;
+        this->newStop = false;
     }
     template <int _Dofs, typename pubDataType>
     void Controller<_Dofs, pubDataType>::calDesireNext(my_robot::Robot<_Dofs> *robot)
     {
         for (int i = 0; i < _Dofs; i++)
         {
-            if (q_dQueue[i].empty())
+            switch (this->nowControllerStatus)
             {
+            case RunStatus::wait_:
                 this->controllerLaw->q_d[i] = this->q_hold[i];
                 this->controllerLaw->dq_d[i] = 0;
                 this->controllerLaw->ddq_d[i] = 0;
-            }
-            else
-            {
-                // printf("else\n");
-                this->controllerLaw->q_d[i] = q_dQueue[i].front();
-                this->controllerLaw->dq_d[i] = dq_dQueue[i].front();
-                this->controllerLaw->ddq_d[i] = ddq_dQueue[i].front();
-                this->q_dQueue[i].pop();
-                this->dq_dQueue[i].pop();
-                this->ddq_dQueue[i].pop();
-                if (q_dQueue[i].empty())
-                {
-                    this->q_hold[i] = this->controllerLaw->q_d[i];
-                    this->nowControllerStatus = RunStatus::wait_;
-                }
+                break;
+            case RunStatus::run_:
+                setDesiredValues(this->controllerLaw->q_d[i], this->controllerLaw->dq_d[i], this->controllerLaw->ddq_d[i],
+                                 q_dQueue[i], dq_dQueue[i], ddq_dQueue[i]);
+                checkIsEmpty(q_dQueue[i], this->q_hold[i], this->controllerLaw->q_d[i], i + 1, _Dofs, this->nowControllerStatus);
+                break;
+            case RunStatus::stop_:
+                setDesiredValues(this->controllerLaw->q_d[i], this->controllerLaw->dq_d[i], this->controllerLaw->ddq_d[i],
+                                 q_stopQueue[i], dq_stopQueue[i], ddq_stopQueue[i]);
+                checkIsEmpty(q_stopQueue[i], this->q_hold[i], this->controllerLaw->q_d[i], i + 1, _Dofs, this->nowControllerStatus);
+                break;
+            default:
+                printf("calDesireNext error\n");
+                break;
             }
         }
     }
@@ -337,9 +366,9 @@ namespace robot_controller
         // this->myfile << "q0: " << robot->getq0().transpose() << "\n";
         // this->myfile << "q: " << robot->getq().transpose() << "\n";
         // this->myfile << "dq: " << robot->getdq().transpose() << "\n";
-        this->myfile << "q_d: " << this->controllerLaw->q_d.transpose() << "\n";
-        this->myfile << "dq_d: " << this->controllerLaw->dq_d.transpose() << "\n";
-        this->myfile << "ddq_d: " << this->controllerLaw->ddq_d.transpose() << "\n";
+        // this->myfile << "q_d: " << this->controllerLaw->q_d.transpose() << "\n";
+        // this->myfile << "dq_d: " << this->controllerLaw->dq_d.transpose() << "\n";
+        // this->myfile << "ddq_d: " << this->controllerLaw->ddq_d.transpose() << "\n";
 
         // this->myfile << "Position0: " << robot->getPosition0().transpose() << "\n";
         // this->myfile << "Orientation0: " << robot->getOrientation0().toRotationMatrix().eulerAngles(2, 1, 0).transpose() << "\n";

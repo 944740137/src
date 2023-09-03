@@ -11,7 +11,7 @@ void calQuinticPlanTime(bool isCoordinated, double *maxVel, double *maxAcc, doub
     for (int i = 0; i < _Dofs; i++)
     {
         double error = std::fabs(qf[i] - q0[i]);
-        double t1 = (15.0 / 8.0 * error) / (maxVel[i]); // 15.0/8.0!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        double t1 = (15.0 / 8.0 * error) / (maxVel[i]); // note 15.0/8.0!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         double t2 = sqrt(5.7735 * error / maxAcc[i]);   // 10/3^0.5
         T[i] = std::max(t1, t2);
         Tf = std::max(Tf, T[i]);
@@ -63,7 +63,25 @@ void calQuinticPlan(bool isCoordinated, double deltaT, double *maxVel, double *m
         }
     }
 }
-
+template <int _Dofs>
+double calStopPlanTime(const Eigen::Matrix<double, _Dofs, 1> &ddq, double dddq)
+{
+    double Tmax = 0.0;
+    for (int i = 0; i < _Dofs; i++)
+    {
+        double error = std::fabs(ddq[i]);
+        double T = error / dddq;
+        if (i == 0 || T > Tmax)
+            Tmax = T;
+    }
+    return Tmax;
+}
+template <int _Dofs>
+void calStopPlan(double deltaT, double dddq, const Eigen::Matrix<double, _Dofs, 1> &ddq,
+                 std::vector<std::queue<double>> &q_d, std::vector<std::queue<double>> &dq_d, std::vector<std::queue<double>> &ddq_d)
+{
+    double stopT = calStopPlanTime(ddq, dddq);
+}
 // template <int _Dofs, typename pubDataType, typename dynParamType>
 // void Controller<_Dofs, pubDataType, dynParamType>::calStopQueue(my_robot::Robot<_Dofs> *robot)
 // {

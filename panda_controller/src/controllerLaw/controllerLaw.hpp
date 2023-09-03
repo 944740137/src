@@ -406,12 +406,7 @@ void PD<_Dofs>::controllerParamRenew(double filterParams)
 }
 
 //
-enum ControllerLawType
-{
-    ComputedTorqueMethod_ = 1,
-    Backstepping_ = 2,
-    PD_ = 3,
-};
+
 template <int _Dofs>
 bool newControllerLaw(std::unique_ptr<ControllerLaw<_Dofs>> &controllerLaw, ControllerLawType controllerLawType, TaskSpace taskSpace)
 {
