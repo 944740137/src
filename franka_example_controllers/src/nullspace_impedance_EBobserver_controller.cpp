@@ -121,17 +121,8 @@ namespace franka_example_controllers
     this->X0 << Eigen::Vector3d(this->T0.translation()), Eigen::Quaterniond(this->T0.rotation()).toRotationMatrix().eulerAngles(2, 1, 0);
 
     this->task2_q_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
-    this->task2_dq_d.setZero();
-    this->task2_ddq_d.setZero();
-    this->tau_msr.setZero();
-    this->dtau_msr.setZero();
 
     this->myfile.open("/home/wd/log/franka/nullSpace/NullSpaceImpedanceEBObserverController.txt");
-    this->ddxc1file.open("/home/wd/log/franka/nullSpace/ddxc1file.txt");
-    this->ddxc2file.open("/home/wd/log/franka/nullSpace/ddxc2file.txt");
-    this->dvcfile.open("/home/wd/log/franka/nullSpace/dvcfile.txt");
-    this->ddqc1file.open("/home/wd/log/franka/nullSpace/ddqc1file.txt");
-    this->ddqc2file.open("/home/wd/log/franka/nullSpace/ddqc2file.txt");
     this->myfile << "NullSpaceImpedanceEBObserverController" << std::endl;
     this->myfile << "编译日期:" << __DATE__ << "\n";
     this->myfile << "编译时刻:" << __TIME__ << "\n";
@@ -142,28 +133,30 @@ namespace franka_example_controllers
 
   void NullSpaceImpedanceEBObserverController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
+
     upDateParam();
+    recordData();
 
     double r1 = 0.1;
     if (time == 0)
     {
-      S1 = this->J;
-      S1_dot.setZero();
+      this->S1 = this->J;
+      this->S1_dot.setZero();
       this->dJ.setZero();
     }
     else
     {
-      /* dJ= */ S1_dot = (this->J - S1) / r1;
-      S1 = S1_dot * t.toSec() + S1;
+      /* dJ= */ this->S1_dot = (this->J - this->S1) / r1;
+      this->S1 = this->S1_dot * t.toSec() + this->S1;
     }
     this->dJ = S1_dot;
 
     // 轨迹和误差  3轨迹最差
     static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
     // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
     // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
 
     // 伪逆矩阵计算
     Eigen::MatrixXd J_pinv;
@@ -175,32 +168,32 @@ namespace franka_example_controllers
     this->dJ1 = dJ.block(0, 0, 3, 7);
     this->J1_pinv = J_pinv.block(0, 0, 7, 3);
 
-    Eigen::Matrix<double, 3, 3> Jm = this->J.block(0, 1, 3, 3);
-    Eigen::Matrix<double, 3, 1> Ja = this->J.block(0, 0, 3, 1);
-    Eigen::Matrix<double, 3, 3> Jb = this->J.block(0, 4, 3, 3);
-    Eigen::Matrix<double, 1, 4> Za;
-    Eigen::Matrix<double, 3, 4> Zb;
-    Eigen::Matrix<double, 3, 4> Zm;
-    Za << 1, 0, 0, 0;
-    Zb << 0, 1, 0, 0,
+    this->Jm = this->J.block(0, 1, 3, 3);
+    this->Ja = this->J.block(0, 0, 3, 1);
+    this->Jb = this->J.block(0, 4, 3, 3);
+    this->Za << 1, 0, 0, 0;
+    this->Zb << 0, 1, 0, 0,
         0, 0, 1, 0,
         0, 0, 0, 1;
-    Zm = Jm.inverse() * (-Ja * Za - Jb * Zb);
-    this->Z << Za, Zm, Zb;
+    this->Zm = this->Jm.inverse() * (-this->Ja * this->Za - this->Jb * this->Zb);
+    this->Z << this->Za, this->Zm, this->Zb;
     this->Z_inv = (this->Z.transpose() * this->M * this->Z).inverse() * this->Z.transpose() * this->M;
     double r2 = 0.01;
     if (time == 0)
     {
-      S2 = this->Z_inv;
-      S2_dot.setZero();
-      dZ_inv.setZero();
+      this->S2 = this->Z_inv;
+      this->S2_dot.setZero();
+      this->dZ_inv.setZero();
     }
     else
     {
-      /* dZ_inv= */ S2_dot = (this->Z_inv - S2) / r2;
-      S2 = S2_dot * t.toSec() + S2;
+      /* dZ_inv= */ this->S2_dot = (this->Z_inv - this->S2) / r2;
+      this->S2 = this->S2_dot * t.toSec() + this->S2;
     }
-    this->dZ_inv = S2_dot;
+    this->dZ_inv = this->S2_dot;
+
+    bool ifPDplus = true; //
+    double r = 0.01;
 
     // 命令加速度与输入力矩
     dx = dX.block(0, 0, 3, 1);
@@ -209,13 +202,23 @@ namespace franka_example_controllers
     s = dXerror.block(0, 0, 3, 1) + P * Xerror.block(0, 0, 3, 1);
 
     tau_msr = tau_msr + dtau_msr * t.toSec();
-    dtau_msr = -Gamma_inv * J1_pinv * s;
+
+    if (ifPDplus)
+      dtau_msr = -Gamma_inv * J1_pinv * (dXerror.block(0, 0, 3, 1) + r * (1 / (1 + Xerror.block(0, 0, 3, 1).norm())) * Xerror.block(0, 0, 3, 1));
+    else
+      dtau_msr = -Gamma_inv * J1_pinv * s;
+
+    F_msr = J_pinv.transpose() * tau_msr;
 
     Lambdav = (Z.transpose() * M * Z);
     uv = (Z.transpose() * C_pin - Lambdav * dZ_inv) * Z;
     v = Z_inv * dq;
 
-    ddxc = ddX_d.block(0, 0, 3, 1) + P * dXerror.block(0, 0, 3, 1) + Lambdax_inv * ((ux + K) * s) /* + J1_pinv.transpose() * tau_msr */;
+   if (ifPDplus)
+      ddxc = ddX_d.block(0, 0, 3, 1) + Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) + J1_pinv.transpose() * tau_msr);
+    else
+      ddxc = ddX_d.block(0, 0, 3, 1) + P * dXerror.block(0, 0, 3, 1) + Lambdax_inv * ((ux + K) * s + J1_pinv.transpose() * tau_msr);
+
     dvc = Lambdav.inverse() * ((uv + Bv) * (-v) + Z.transpose() * Kd * (task2_q_d - q));
     ddqc = J1_pinv * (ddxc - dJ1 * dq) + Z * (dvc + dZ_inv * dq);
 
@@ -226,92 +229,10 @@ namespace franka_example_controllers
     // this->tau_d << tau_task /* + tau_null */ + c;
 
     // 记录数据
-    char tmp = ' ';
     this->time++;
-    recordData();
-    // this->myfile << "\n";
-
-    // 检查雅克比和零空间矩阵
-    //  this->myfile << "Jm.determinant()" << Jm.determinant() << "\n";
-    // this->myfile << "dJ" << tmp << "\n";
-    // this->myfile << dJ << "\n";
-    // this->myfile << "J" << tmp << "\n";
-    // this->myfile << J << "\n";
-    // this->myfile << "J1" << tmp << "\n";
-    // this->myfile << J1 << "\n";
-    // this->myfile << "dJ1" << tmp << "\n";
-    // this->myfile << dJ1 << "\n";
-    // this->myfile << "Ja" << tmp << "\n";
-    // this->myfile << Ja << "\n";
-    // this->myfile << "Jb" << tmp << "\n";
-    // this->myfile << Jb << "\n";
-    // this->myfile << "Jm" << tmp << "\n";
-    // this->myfile << Jm << "\n";
-    // this->myfile << "Z" << tmp << "\n";
-    // this->myfile << Z << "\n";
-    // this->myfile << "Z_inv" << tmp << "\n";
-    // this->myfile << Z_inv << "\n";
-    // this->myfile << "dZ_inv" << tmp << "\n";
-    // this->myfile << dZ_inv << "\n";
-    // this->myfile << "J1*Z " << tmp << "\n";
-    // this->myfile << J1 * Z << "\n";
-    // this->myfile << "J1*J1_pinv " << tmp << "\n";
-    // this->myfile << J1 * J1_pinv << "\n";
-    // this->myfile << "\n";
-    // 中间变量
-    // this->myfile << "\n";
-    // this->myfile << "Lambdax_inv " << tmp << "\n";
-    // this->myfile << Lambdax_inv << "\n";
-    // this->myfile << "ux " << tmp << "\n";
-    // this->myfile << ux << "\n";
-    // this->myfile << "K " << 1 << "\n";
-    // this->myfile << K << "\n";
-    // this->myfile << "Lambdav " << 1 << "\n";
-    // this->myfile << Lambdav << "\n";
-    // this->myfile << "Lambdav.inverse() " << 1 << "\n";
-    // this->myfile << Lambdav.inverse() << "\n";
-    // this->myfile << "uv " << tmp << "\n";
-    // this->myfile << uv << "\n";
-    // this->myfile << "Bv " << 1 << "\n";
-    // this->myfile << Bv << "\n";
-
-    // this->myfile << "Kd " << 1 << "\n";
-    // this->myfile << Kd << "\n";
-
-    // this->myfile << "\n";
-    this->myfile << "s:" << s.transpose() << "\n";
-    // this->myfile << "dx:" << dx.transpose() << "\n";
-    // this->myfile << "q_hat" << (q - task2_q_d).transpose() << "\n";
-    this->myfile << "dtau_msr:" << dtau_msr.transpose() << "\n";
-    this->myfile << "tau_msr:" << tau_msr.transpose() << "\n";
-    // this->myfile << "v:" << v.transpose() << "\n";
-    // this->myfile << "ddxc:" << ddxc.transpose() << "\n";
-    // this->myfile << "dvc:" << dvc.transpose() << "\n";
-    // this->myfile << "ddqc:" << ddqc.transpose() << "\n";
-    this->myfile << " " << std::endl; // 刷新缓冲区
-
-    this->ddxc1file << "time: " << this->time << "_\n";
-    this->ddxc1file << "J1_pinv " << tmp << "\n";
-    this->ddxc1file << J1_pinv << "\n";
-    // this->ddxc1file << "dddxc1: " << (-P * dx + Lambdax_inv * ((ux + K) * s)).transpose() << std::endl;
-
-    this->ddxc2file << "time: " << this->time << "_\n";
-    this->ddxc2file << "s: " << s.transpose() << "\n";
-    // this->ddxc2file << "ddxc2" << (J1_pinv.transpose() * tau_msr).transpose() << std::endl;
-
-    this->dvcfile << "time: " << this->time << "_\n";
-    this->dvcfile << "dvc: " << dvc.transpose() << std::endl;
-
-    this->ddqc1file << "time: " << this->time << "_\n";
-
-    this->ddqc1file << "ddqc1 " << (J1_pinv * (ddxc - J1 * dq)).transpose() << std::endl;
-
-    this->ddqc2file << "time: " << this->time << "_\n";
-    this->ddqc2file << "dvc: " << dvc.transpose() << std::endl;
-    this->ddqc2file << "v: " << v.transpose() << std::endl;
-    this->ddqc2file << "dvc(): " << ((uv + Bv) * v - Z.transpose() * Kd * (q - task2_q_d)).transpose() << std::endl;
-    this->ddqc2file << "dZ_inv * dq: " << (dZ_inv * dq).transpose() << std::endl;
-    this->ddqc2file << "ddqc2: " << (Z * (dvc - dZ_inv * dq)).transpose() << std::endl;
+    this->myfile << "dXerror: " << dXerror.transpose() << "\n";
+    this->myfile << "Xerror: " << Xerror.transpose() << "\n";
+    this->myfile << "Xerror.block(0, 0, 3, 1).norm(): " << Xerror.block(0, 0, 3, 1).norm() << "\n";
 
     // 画图
     for (int i = 0; i < 7; i++)
@@ -321,6 +242,7 @@ namespace franka_example_controllers
       this->param_debug.dtau_msr[i] = this->dtau_msr[i];
       if (i == 6)
         break;
+      this->param_debug.F_msr[i] = this->F_msr[i];
       this->param_debug.X[i] = this->X[i];
       this->param_debug.X_d[i] = X_d[i];
       this->param_debug.dX[i] = this->dX[i];
@@ -364,19 +286,22 @@ namespace franka_example_controllers
     pinInteractive->forwardKinematics(this->q);
     pinInteractive->updateFramePlacements();
 
-    pinInteractive->computeJointJacobians(this->J_pin, this->q);
+    // pinInteractive->computeJointJacobians(this->J_pin, this->q);
     pinInteractive->computeCoriolisMatrix(this->C_pin, this->q, this->dq);
   }
 
   void NullSpaceImpedanceEBObserverController::recordData()
   {
-    this->myfile << "time: " << this->time << "_\n";
+    // this->myfile << "time: " << this->time << "_\n";
 
-    this->myfile << "tau_d: " << this->tau_d.transpose() << "\n";
+    // this->myfile << "tau_d: " << this->tau_d.transpose() << "\n";
     // this->myfile << "q: " << this->q.transpose() << "\n";
     // this->myfile << "dq: " << this->dq.transpose() << "\n";
     // this->myfile << "X: " << this->X.transpose() << "\n";
     // this->myfile << "dX: " << this->dX.transpose() << "\n";
+
+    // this->myfile << "R: \n";
+    // this->myfile << this->T.rotation() << "\n";
 
     // this->myfile << "J_pin: \n";
     // this->myfile << this->J_pin << "\n";
@@ -395,20 +320,57 @@ namespace franka_example_controllers
     // this->myfile << this->M << "\n";
     // this->myfile << "c: \n";
     // this->myfile << this->c.transpose() << "\n";
-    // this->myfile << "C_pin: \n";
+    // this->myfile << "C_pin*dq: \n";
     // this->myfile << (this->C_pin * this->dq).transpose() << "\n";
     // this->myfile << "G: \n";
     // this->myfile << this->G.transpose() << "\n";
 
-    // this->myfile << "R: \n";
-    // this->myfile << this->T.rotation() << "\n";
-    // this->myfile << "task1_Kp: \n";
-    // this->myfile << task1_Kp << "\n";
-    // this->myfile << "task1_Kv: \n";
-    // this->myfile << task1_Kv << "\n";
-    // this->myfile << "task2_q_d: " << task2_q_d.transpose() << "\n";
-    // this->myfile << "task2_dq_d: " << task2_dq_d.transpose() << "\n";
-    // this->myfile << "task2_ddq_d: " << task2_ddq_d.transpose() << "\n";
+    // this->myfile << "Z: \n";
+    // this->myfile << this->Z << "\n";
+    // this->myfile << "Z_inv: \n";
+    // this->myfile << this->Z_inv << "\n";
+    // this->myfile << "dZ_inv: \n";
+    // this->myfile << this->dZ_inv << "\n";
+    // this->myfile << "Lambdax_inv: \n";
+    // this->myfile << this->Lambdax_inv << "\n";
+    // this->myfile << "Lambdav: \n";
+    // this->myfile << this->Lambdav << "\n";
+    // this->myfile << "ux: \n";
+    // this->myfile << this->ux << "\n";
+    // this->myfile << "uv: \n";
+    // this->myfile << this->uv << "\n";
+
+    this->myfile << "tau_msr: " << this->tau_msr.transpose() << "\n";
+    this->myfile << "dtau_msr: " << this->dtau_msr.transpose() << "\n";
+    this->myfile << "ddxc: " << this->ddxc.transpose() << "\n";
+    this->myfile << "dvc: " << this->dvc.transpose() << "\n";
+    // this->myfile << "ddqc: " << this->ddqc.transpose() << "\n";
+
+    // this->myfile << "task2_q_d: " << this->task2_q_d.transpose() << "\n";
+    // this->myfile << "P: \n";
+    // this->myfile << this->P << "\n";
+    // this->myfile << "K: \n";
+    // this->myfile << this->K << "\n";
+    // this->myfile << "P_d: \n";
+    // this->myfile << this->P_d << "\n";
+    // this->myfile << "K_d: \n";
+    // this->myfile << this->K_d << "\n";
+
+    // this->myfile << "Bv: \n";
+    // this->myfile << this->Bv << "\n";
+    // this->myfile << "Kd: \n";
+    // this->myfile << this->Kd << "\n";
+    // this->myfile << "Bv_d: \n";
+    // this->myfile << this->Bv_d << "\n";
+    // this->myfile << "Kd_d: \n";
+    // this->myfile << this->Kd_d << "\n";
+
+    // this->myfile << "Gamma_inv: \n";
+    // this->myfile << this->Gamma_inv << "\n";
+    // this->myfile << "Gamma_inv_d: \n";
+    // this->myfile << this->Gamma_inv_d << "\n";
+
+    this->myfile << "------------------" << std::endl;
   }
 
   void NullSpaceImpedanceEBObserverController::complianceParamCallback(franka_example_controllers::nullspace_impedance_controller_paramConfig &config, uint32_t /*level*/)
@@ -418,11 +380,16 @@ namespace franka_example_controllers
       P << config.P * Eigen::MatrixXd::Identity(3, 3);
       K << config.K * Eigen::MatrixXd::Identity(3, 3);
 
+      PD_D << config.PD_D * Eigen::MatrixXd::Identity(3, 3);
+      PD_K << config.PD_K * Eigen::MatrixXd::Identity(3, 3);
+
       Bv << config.Bv * Eigen::MatrixXd::Identity(4, 4);
       Kd << config.Kd * Eigen::MatrixXd::Identity(7, 7);
 
       Gamma_inv << config.Gamma_inv * Eigen::MatrixXd::Identity(7, 7);
     }
+    PD_D_d << config.PD_D * Eigen::MatrixXd::Identity(3, 3);
+    PD_K_d << config.PD_K * Eigen::MatrixXd::Identity(3, 3);
 
     P_d << config.P * Eigen::MatrixXd::Identity(3, 3);
     K_d << config.K * Eigen::MatrixXd::Identity(3, 3);

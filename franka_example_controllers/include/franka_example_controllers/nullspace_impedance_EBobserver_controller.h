@@ -54,11 +54,6 @@ namespace franka_example_controllers
     // bool firstUpdate = true; // 用于判断是不是第一个控制周期，计算雅可比导数。
     double time = 0;
     std::ofstream myfile;
-    std::ofstream ddxc1file;
-    std::ofstream ddxc2file;
-    std::ofstream dvcfile;
-    std::ofstream ddqc1file;
-    std::ofstream ddqc2file;
 
     // 动态配置参数
     std::unique_ptr<dynamic_reconfigure::Server<franka_example_controllers::nullspace_impedance_controller_paramConfig>> dynamic_server_compliance_param_;
@@ -72,87 +67,97 @@ namespace franka_example_controllers
     void recordData();
 
     // 初始值
-    Eigen::Matrix<double, 7, 1> q0;
-    Eigen::Matrix<double, 6, 1> X0;
+    Eigen::Matrix<double, 7, 1> q0 = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 6, 1> X0 = Eigen::MatrixXd::Zero(6, 1);
     Eigen::Affine3d T0;
 
     // 获取传感器数据
     void upDateParam();
     franka::RobotState robot_state;
-    Eigen::Matrix<double, 7, 1> q;
-    Eigen::Matrix<double, 7, 1> dq;
-    Eigen::Matrix<double, 7, 1> tau_J_d;
-    Eigen::Matrix<double, 7, 1> tau_d;
+    Eigen::Matrix<double, 7, 1> q = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> dq = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> tau_J_d = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> tau_d = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Affine3d T;
-    Eigen::Matrix<double, 6, 1> X;
-    Eigen::Matrix<double, 6, 1> dX;
+    Eigen::Matrix<double, 6, 1> X = Eigen::MatrixXd::Zero(6, 1);
+    Eigen::Matrix<double, 6, 1> dX = Eigen::MatrixXd::Zero(6, 1);
 
     // 获取动力学/运动学数据
-    Eigen::Matrix<double, 7, 7> M;
-    Eigen::Matrix<double, 7, 1> c;
-    Eigen::Matrix<double, 7, 1> G;
-    Eigen::Matrix<double, 6, 7> J;
+    Eigen::Matrix<double, 7, 7> M = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 1> c = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> G = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 6, 7> J = Eigen::MatrixXd::Zero(6, 7);
 
-    Eigen::Matrix<double, 7, 7> M_pin;
-    Eigen::Matrix<double, 7, 7> C_pin;
-    Eigen::Matrix<double, 7, 1> G_pin;
-    Eigen::Matrix<double, 6, 7> J_pin;
+    Eigen::Matrix<double, 7, 7> M_pin = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 7> C_pin = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 1> G_pin = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 6, 7> J_pin = Eigen::MatrixXd::Zero(6, 7);
     // 计算雅克比
-    Eigen::Matrix<double, 6, 7> dJ; // 未滤波
-    Eigen::Matrix<double, 6, 7> J_old;
-    Eigen::Matrix<double, 6, 7> S1;
-    Eigen::Matrix<double, 6, 7> S1_dot;
+    Eigen::Matrix<double, 6, 7> dJ = Eigen::MatrixXd::Zero(6, 7); // 未滤波
+    Eigen::Matrix<double, 6, 7> J_old = Eigen::MatrixXd::Zero(6, 7);
+    Eigen::Matrix<double, 6, 7> S1 = Eigen::MatrixXd::Zero(6, 7);
+    Eigen::Matrix<double, 6, 7> S1_dot = Eigen::MatrixXd::Zero(6, 7);
 
     /********************************************控制器********************************************/
-    Eigen::Matrix<double, 3, 7> J1; // 论文里的J
-    Eigen::Matrix<double, 3, 7> dJ1;
-    Eigen::Matrix<double, 7, 3> J1_pinv;
+    Eigen::Matrix<double, 3, 3> Jm = Eigen::MatrixXd::Zero(3, 3);
+    Eigen::Matrix<double, 3, 1> Ja = Eigen::MatrixXd::Zero(3, 1);
+    Eigen::Matrix<double, 3, 3> Jb = Eigen::MatrixXd::Zero(3, 3);
+    Eigen::Matrix<double, 1, 4> Za = Eigen::MatrixXd::Zero(1, 4);
+    Eigen::Matrix<double, 3, 4> Zb = Eigen::MatrixXd::Zero(3, 4);
+    Eigen::Matrix<double, 3, 4> Zm = Eigen::MatrixXd::Zero(3, 4);
 
-    Eigen::Matrix<double, 7, 4> Z;
-    Eigen::Matrix<double, 4, 7> Z_inv; // v = Z_inv * q
-    Eigen::Matrix<double, 4, 7> dZ_inv;
-    Eigen::Matrix<double, 4, 7> S2;
-    Eigen::Matrix<double, 4, 7> S2_dot;
-    
-    Eigen::Matrix<double, 3, 1> dx;
-    Eigen::Matrix<double, 4, 1> v;
+    Eigen::Matrix<double, 3, 7> J1 = Eigen::MatrixXd::Zero(3, 7); // 论文里的J
+    Eigen::Matrix<double, 3, 7> dJ1 = Eigen::MatrixXd::Zero(3, 7);
+    Eigen::Matrix<double, 7, 3> J1_pinv = Eigen::MatrixXd::Zero(7, 3);
 
-    Eigen::Matrix<double, 3, 1> s;
+    Eigen::Matrix<double, 7, 4> Z = Eigen::MatrixXd::Zero(7, 4);
+    Eigen::Matrix<double, 4, 7> Z_inv = Eigen::MatrixXd::Zero(4, 7); // v = Z_inv * q
+    Eigen::Matrix<double, 4, 7> dZ_inv = Eigen::MatrixXd::Zero(4, 7);
+    Eigen::Matrix<double, 4, 7> S2 = Eigen::MatrixXd::Zero(4, 7);
+    Eigen::Matrix<double, 4, 7> S2_dot = Eigen::MatrixXd::Zero(4, 7);
 
-    Eigen::Matrix<double, 3, 3> Lambdax_inv;
-    Eigen::Matrix<double, 4, 4> Lambdav;
-    Eigen::Matrix<double, 3, 3> ux;
-    Eigen::Matrix<double, 4, 4> uv;
+    Eigen::Matrix<double, 3, 1> dx = Eigen::MatrixXd::Zero(3, 1);
+    Eigen::Matrix<double, 4, 1> v = Eigen::MatrixXd::Zero(4, 1);
 
-    Eigen::Matrix<double, 7, 1> tau_msr;
-    Eigen::Matrix<double, 7, 1> dtau_msr;
+    Eigen::Matrix<double, 3, 1> s = Eigen::MatrixXd::Zero(3, 1);
 
-    Eigen::Matrix<double, 3, 1> ddxc;
-    Eigen::Matrix<double, 4, 1> dvc;
-    Eigen::Matrix<double, 7, 1> ddqc;
+    Eigen::Matrix<double, 3, 3> Lambdax_inv = Eigen::MatrixXd::Zero(3, 3);
+    Eigen::Matrix<double, 4, 4> Lambdav = Eigen::MatrixXd::Zero(4, 4);
+    Eigen::Matrix<double, 3, 3> ux = Eigen::MatrixXd::Zero(3, 3);
+    Eigen::Matrix<double, 4, 4> uv = Eigen::MatrixXd::Zero(4, 4);
 
-    Eigen::Matrix<double, 7, 1> tau_task;
-    Eigen::Matrix<double, 7, 1> tau_null;
+    Eigen::Matrix<double, 6, 1> F_msr = Eigen::MatrixXd::Zero(6, 1);
+    Eigen::Matrix<double, 7, 1> tau_msr = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> dtau_msr = Eigen::MatrixXd::Zero(7, 1);
+
+    Eigen::Matrix<double, 3, 1> ddxc = Eigen::MatrixXd::Zero(3, 1);
+    Eigen::Matrix<double, 4, 1> dvc = Eigen::MatrixXd::Zero(4, 1);
+    Eigen::Matrix<double, 7, 1> ddqc = Eigen::MatrixXd::Zero(7, 1);
+
+    Eigen::Matrix<double, 7, 1> tau_task = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> tau_null = Eigen::MatrixXd::Zero(7, 1);
 
     // 主任务
-    Eigen::Matrix<double, 3, 3> P;
-    Eigen::Matrix<double, 3, 3> K;
-    Eigen::Matrix<double, 3, 3> P_d;
-    Eigen::Matrix<double, 3, 3> K_d;
+    Eigen::Matrix<double, 3, 3> PD_D = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> PD_D_d = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> PD_K = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> PD_K_d = Eigen::MatrixXd::Identity(3, 3);
+
+    Eigen::Matrix<double, 3, 3> P = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> K = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> P_d = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> K_d = Eigen::MatrixXd::Identity(3, 3);
 
     // 零空间任务
-    Eigen::Matrix<double, 4, 4> Bv;
-    Eigen::Matrix<double, 7, 7> Kd;
-    Eigen::Matrix<double, 4, 4> Bv_d;
-    Eigen::Matrix<double, 7, 7> Kd_d;
+    Eigen::Matrix<double, 4, 4> Bv = Eigen::MatrixXd::Identity(4, 4);
+    Eigen::Matrix<double, 7, 7> Kd = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 4, 4> Bv_d = Eigen::MatrixXd::Identity(4, 4);
+    Eigen::Matrix<double, 7, 7> Kd_d = Eigen::MatrixXd::Identity(7, 7);
 
-    Eigen::Matrix<double, 7, 1> task2_q_d;
-    Eigen::Matrix<double, 7, 1> task2_dq_d;
-    Eigen::Matrix<double, 7, 1> task2_ddq_d;
-
+    Eigen::Matrix<double, 7, 1> task2_q_d = Eigen::MatrixXd::Zero(7, 1);
     // 观测器
-    Eigen::Matrix<double, 7, 7> Gamma_inv;
-    Eigen::Matrix<double, 7, 7> Gamma_inv_d;
+    Eigen::Matrix<double, 7, 7> Gamma_inv = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 7> Gamma_inv_d = Eigen::MatrixXd::Identity(7, 7);
   };
 
 } // namespace franka_example_controllers
