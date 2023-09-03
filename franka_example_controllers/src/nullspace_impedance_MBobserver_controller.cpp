@@ -1,5 +1,7 @@
 // Copyright (c) 2017 Franka Emika GmbH
 // Use of this source code is governed by the Apache-2.0 license, see LICENSE
+#include <franka_example_controllers/pinocchino_interactive.h>
+
 #include <franka_example_controllers/nullspace_impedance_MBobserver_controller.h>
 
 #include <cmath>
@@ -15,315 +17,333 @@
 #include <fstream>
 #include <iostream>
 
-namespace franka_example_controllers {
+extern pinLibInteractive *pinInteractive;
 
-bool NullSpaceImpedanceMBObserverController::init(hardware_interface::RobotHW* robot_hw,ros::NodeHandle& node_handle) 
+namespace franka_example_controllers
 {
-  paramForDebug = node_handle.advertise<franka_example_controllers::paramForDebug>("paramForDebug",20);
 
-  //参数服务器
-  std::string arm_id;
-  if (!node_handle.getParam("arm_id", arm_id)) {
-    ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Could not read parameter arm_id");
-    return false;
-  }
-  std::vector<std::string> joint_names;
-  if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7) {
-    ROS_ERROR(
-        "NullSpaceImpedanceMBObserverController: Invalid or no joint_names parameters provided, "
-        "aborting controller init!");
-    return false;
-  }
+  bool NullSpaceImpedanceMBObserverController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
+  {
+    std::cout << "[------------------] init1:NullSpaceImpedanceMBObserverController" << std::endl;
+    std::cout << "[------------------] init2:NullSpaceImpedanceMBObserverController" << std::endl;
 
-  //运动学/动力学模型类：实例化
-  auto* model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
-  if (model_interface == nullptr) {
-    ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Error getting model interface from hardware");
-    return false;
-  }
-  try {
-    model_handle_ = std::make_unique<franka_hw::FrankaModelHandle>(model_interface->getHandle(arm_id + "_model"));
-  } catch (hardware_interface::HardwareInterfaceException& ex) {
-    ROS_ERROR_STREAM(
-        "NullSpaceImpedanceMBObserverController: Exception getting model handle from interface: "<< ex.what());
-    return false;
-  }
-
-  //机器人完整状态类：实例化
-  auto* state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
-  if (state_interface == nullptr) {
-    ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Error getting state interface from hardware");
-    return false;
-  }
-  try {
-    state_handle_ = std::make_unique<franka_hw::FrankaStateHandle>(state_interface->getHandle(arm_id + "_robot"));
-  } catch (hardware_interface::HardwareInterfaceException& ex) {
-    ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Exception getting state handle from interface: "<< ex.what());
-    return false;
-  }
-  
-  //关节控制类（ROS自带）：实例化
-  auto* effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
-  if (effort_joint_interface == nullptr) {
-    ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Error getting effort joint interface from hardware");
-    return false;
-  }
-  for (size_t i = 0; i < 7; ++i) {
-    try {
-      joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
-    } catch (const hardware_interface::HardwareInterfaceException& ex) {
-      ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Exception getting joint handles: " << ex.what());
+    // 参数服务器
+    std::string arm_id;
+    if (!node_handle.getParam("arm_id", arm_id))
+    {
+      ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Could not read parameter arm_id");
       return false;
+    }
+    std::vector<std::string> joint_names;
+    if (!node_handle.getParam("joint_names", joint_names) || joint_names.size() != 7)
+    {
+      ROS_ERROR(
+          "NullSpaceImpedanceMBObserverController: Invalid or no joint_names parameters provided, "
+          "aborting controller init!");
+      return false;
+    }
+
+    // 运动学/动力学模型类：实例化
+    auto *model_interface = robot_hw->get<franka_hw::FrankaModelInterface>();
+    if (model_interface == nullptr)
+    {
+      ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Error getting model interface from hardware");
+      return false;
+    }
+    try
+    {
+      model_handle_ = std::make_unique<franka_hw::FrankaModelHandle>(model_interface->getHandle(arm_id + "_model"));
+    }
+    catch (hardware_interface::HardwareInterfaceException &ex)
+    {
+      ROS_ERROR_STREAM(
+          "NullSpaceImpedanceMBObserverController: Exception getting model handle from interface: " << ex.what());
+      return false;
+    }
+
+    // 机器人完整状态类：实例化
+    auto *state_interface = robot_hw->get<franka_hw::FrankaStateInterface>();
+    if (state_interface == nullptr)
+    {
+      ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Error getting state interface from hardware");
+      return false;
+    }
+    try
+    {
+      state_handle_ = std::make_unique<franka_hw::FrankaStateHandle>(state_interface->getHandle(arm_id + "_robot"));
+    }
+    catch (hardware_interface::HardwareInterfaceException &ex)
+    {
+      ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Exception getting state handle from interface: " << ex.what());
+      return false;
+    }
+
+    // 关节控制类（ROS自带）：实例化
+    auto *effort_joint_interface = robot_hw->get<hardware_interface::EffortJointInterface>();
+    if (effort_joint_interface == nullptr)
+    {
+      ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Error getting effort joint interface from hardware");
+      return false;
+    }
+    for (size_t i = 0; i < 7; ++i)
+    {
+      try
+      {
+        joint_handles_.push_back(effort_joint_interface->getHandle(joint_names[i]));
+      }
+      catch (const hardware_interface::HardwareInterfaceException &ex)
+      {
+        ROS_ERROR_STREAM("NullSpaceImpedanceMBObserverController: Exception getting joint handles: " << ex.what());
+        return false;
+      }
+    }
+
+    dynamic_reconfigure_compliance_param_node_ = ros::NodeHandle(node_handle.getNamespace() + "/dynamic_reconfigure_compliance_param_node");
+    dynamic_server_compliance_param_ = std::make_unique<dynamic_reconfigure::Server<franka_example_controllers::nullspace_impedance_controller_paramConfig>>(dynamic_reconfigure_compliance_param_node_);
+    dynamic_server_compliance_param_->setCallback(boost::bind(&NullSpaceImpedanceMBObserverController::complianceParamCallback, this, _1, _2));
+
+    paramForDebug = node_handle.advertise<franka_example_controllers::paramForDebug>("paramForDebug", 20);
+
+    return true;
+  }
+
+  void NullSpaceImpedanceMBObserverController::starting(const ros::Time & /*time*/)
+  {
+    std::cout << "[------------------] start1:NullSpaceImpedanceMBObserverController\n";
+    std::cout << "[------------------] start2:NullSpaceImpedanceMBObserverController\n";
+    std::cout << "[------------------] 编译日期:" << __DATE__ << "\n";
+    std::cout << "[------------------] 编译时刻:" << __TIME__ << "\n";
+    std::cout << "[------------------] 动量观测器" << std::endl;
+
+    // 获取机器人初始状态
+    franka::RobotState initial_state = state_handle_->getRobotState();
+    this->T0 = Eigen::Affine3d(Eigen::Matrix4d::Map(initial_state.O_T_EE.data())); // 齐次变换矩阵
+    this->q0 = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
+    this->X0 << Eigen::Vector3d(this->T0.translation()), Eigen::Quaterniond(this->T0.rotation()).toRotationMatrix().eulerAngles(2, 1, 0);
+
+    this->task2_q_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
+
+    this->myfile.open("/home/wd/log/franka/nullSpace/NullSpaceImpedanceEBObserverController.txt");
+    this->myfile << "NullSpaceImpedanceEBObserverController" << std::endl;
+    this->myfile << "编译日期:" << __DATE__ << "\n";
+    this->myfile << "编译时刻:" << __TIME__ << "\n";
+    this->myfile << "误差观测器" << std::endl;
+    if (pinInteractive == nullptr)
+      pinInteractive = new pinLibInteractive();
+  }
+
+  void NullSpaceImpedanceMBObserverController::update(const ros::Time & /*time*/, const ros::Duration &t)
+  {
+
+    upDateParam();
+    recordData();
+
+    double r1 = 0.1;
+    if (time == 0)
+    {
+      this->S1 = this->J;
+      this->S1_dot.setZero();
+      this->dJ.setZero();
+    }
+    else
+    {
+      /* dJ= */ this->S1_dot = (this->J - this->S1) / r1;
+      this->S1 = this->S1_dot * t.toSec() + this->S1;
+    }
+    this->dJ = S1_dot;
+
+    // 轨迹和误差  3轨迹最差
+    static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
+    // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+
+    // 伪逆矩阵计算
+    Eigen::MatrixXd J_pinv;
+    Eigen::MatrixXd I = Eigen::MatrixXd::Identity(7, 7);
+    weightedPseudoInverse(J, J_pinv, this->M);
+
+    // Z
+    this->J1 = this->J.block(0, 0, 3, 7);
+    this->dJ1 = dJ.block(0, 0, 3, 7);
+    this->J1_pinv = J_pinv.block(0, 0, 7, 3);
+
+    this->Jm = this->J.block(0, 1, 3, 3);
+    this->Ja = this->J.block(0, 0, 3, 1);
+    this->Jb = this->J.block(0, 4, 3, 3);
+    this->Za << 1, 0, 0, 0;
+    this->Zb << 0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1;
+    this->Zm = this->Jm.inverse() * (-this->Ja * this->Za - this->Jb * this->Zb);
+    this->Z << this->Za, this->Zm, this->Zb;
+    this->Z_inv = (this->Z.transpose() * this->M * this->Z).inverse() * this->Z.transpose() * this->M;
+    double r2 = 0.01;
+    if (time == 0)
+    {
+      this->S2 = this->Z_inv;
+      this->S2_dot.setZero();
+      this->dZ_inv.setZero();
+    }
+    else
+    {
+      /* dZ_inv= */ this->S2_dot = (this->Z_inv - this->S2) / r2;
+      this->S2 = this->S2_dot * t.toSec() + this->S2;
+    }
+    this->dZ_inv = this->S2_dot;
+
+    bool ifPDplus = true; 
+    double r = 0.01;
+
+    // 命令加速度与输入力矩
+    dx = dX.block(0, 0, 3, 1);
+    Lambdax_inv = (J1 * M.inverse() * J1.transpose());
+    ux = (J1_pinv.transpose() * C_pin - Lambdax_inv.inverse() * dJ1) * J1_pinv;
+
+    tau_msr = tau_msr + dtau_msr * t.toSec();
+
+    // if (ifPDplus)
+    //   dtau_msr = -Gamma_inv * J1_pinv * (dXerror.block(0, 0, 3, 1) + r * (1 / (1 + Xerror.block(0, 0, 3, 1).norm())) * Xerror.block(0, 0, 3, 1));
+    // else
+    //   dtau_msr = -Gamma_inv * J1_pinv * s;
+
+    F_msr = J_pinv.transpose() * tau_msr;
+
+    Lambdav = (Z.transpose() * M * Z);
+    uv = (Z.transpose() * C_pin - Lambdav * dZ_inv) * Z;
+    v = Z_inv * dq;
+
+    if (ifPDplus)
+      ddxc = Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) + J1_pinv.transpose() * tau_msr);
+    else
+      ddxc = ddX_d.block(0, 0, 3, 1) + Kv * dXerror.block(0, 0, 3, 1) + Kp * Xerror.block(0, 0, 3, 1) + Lambdax_inv * J1_pinv.transpose() * tau_msr;
+
+    dvc = Lambdav.inverse() * ((uv + Bv) * (-v) + Z.transpose() * Kd * (task2_q_d - q));
+    ddqc = J1_pinv * (ddxc - dJ1 * dq) + Z * (dvc - dZ_inv * dq);
+
+    this->tau_d << M * ddqc + c;
+
+    // 记录数据
+    this->time++;
+    this->myfile << "dXerror: " << dXerror.transpose() << "\n";
+    this->myfile << "Xerror: " << Xerror.transpose() << "\n";
+    this->myfile << "Xerror.block(0, 0, 3, 1).norm(): " << Xerror.block(0, 0, 3, 1).norm() << "\n";
+
+    // 画图
+    for (int i = 0; i < 7; i++)
+    {
+      this->param_debug.tau_d[i] = this->tau_d[i];
+      this->param_debug.tau_msr[i] = this->tau_msr[i];
+      this->param_debug.dtau_msr[i] = this->dtau_msr[i];
+      if (i == 6)
+        break;
+      this->param_debug.F_msr[i] = this->F_msr[i];
+      this->param_debug.X[i] = this->X[i];
+      this->param_debug.X_d[i] = X_d[i];
+      this->param_debug.dX[i] = this->dX[i];
+      this->param_debug.dX_d[i] = dX_d[i];
+      this->param_debug.Xerror[i] = Xerror[i];
+      this->param_debug.dXerror[i] = dXerror[i];
+      if (i >= 3)
+        continue;
+    }
+    this->paramForDebug.publish(this->param_debug);
+
+    // 目标位置，控制参数更新
+    controllerParamRenew();
+
+    // 平滑命令
+    tau_d << saturateTorqueRate(this->tau_d, this->tau_J_d);
+    for (size_t i = 0; i < 7; ++i)
+    {
+      joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
     }
   }
 
-  dynamic_reconfigure_compliance_param_node_ = ros::NodeHandle(node_handle.getNamespace() + "/dynamic_reconfigure_compliance_param_node");
-  dynamic_server_compliance_param_ = std::make_unique<dynamic_reconfigure::Server<franka_example_controllers::nullspace_impedance_MBobserver_controller_paramConfig>>(dynamic_reconfigure_compliance_param_node_);
-  dynamic_server_compliance_param_->setCallback(boost::bind(&NullSpaceImpedanceMBObserverController::complianceParamCallback, this, _1, _2));
-
-  //初始位置姿态赋初值
-  position_d.setZero();
-  position_d_target.setZero();
-
-  // 控制参数赋初值
-  KI << Ki * Eigen::MatrixXd::Identity(7, 7);
-  Kp.topLeftCorner(3, 3) << Kp_pos * Eigen::Matrix3d::Identity();
-  Kp.bottomRightCorner(3, 3) << Kp_ori * Eigen::Matrix3d::Identity();
-  Kv.topLeftCorner(3, 3) << Kv_pos * Eigen::Matrix3d::Identity();
-  Kv.bottomRightCorner(3, 3) << Kv_ori * Eigen::Matrix3d::Identity();
-
-  Md.setIdentity();
-  Bd.setIdentity();
-  Kd.setIdentity();
-  return true;
-}
-
-// debug
-int time3 = 0;
-std::ofstream myfile3;
-
-void NullSpaceImpedanceMBObserverController::starting(const ros::Time& /*time*/) 
-{
-  std::cout << "--------------start:NullSpaceImpedanceMBObserverController_3.23--------------"<< std::endl;
-  std::cout << "--------------start:NullSpaceImpedanceMBObserverController_3.23--------------" << std::endl;
-  // 获取机器人初始状态
-  franka::RobotState initial_state = state_handle_->getRobotState();
-  // 基坐标系下的雅可比（上一时刻，用于数值微分）
-  std::array<double, 42> jacobian_array_old = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
-  Eigen::Map<Eigen::Matrix<double, 6, 7>> jacobian(jacobian_array_old.data());
-  // 获取当前关节位置
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> q_initial(initial_state.q.data());
-  // 当前笛卡尔位置的齐次变换矩阵
-  Eigen::Affine3d initial_transform(Eigen::Matrix4d::Map(initial_state.O_T_EE.data()));
-
-  // 将当前状态设置为平衡点
-  position_d = initial_transform.translation();
-  orientation_d = Eigen::Quaterniond(initial_transform.rotation());
-  position_d_target = initial_transform.translation();
-  orientation_d_target = Eigen::Quaterniond(initial_transform.rotation());
-
-  // 零空间期望位置设为当其位置
-  q_d = q_initial;
-  dq_d.setZero();
-  ddq_d.setZero();
-}
-
-void NullSpaceImpedanceMBObserverController::update(const ros::Time& /*time*/,const ros::Duration& t) 
-{
-  //画图
-  franka_example_controllers::paramForDebug param_debug;
-
-  // 获取状态,C,M，q,dq
-  franka::RobotState robot_state = state_handle_->getRobotState();
-  std::array<double, 7> coriolis_array = model_handle_->getCoriolis();
-  std::array<double, 49> mass_array = model_handle_->getMass();
-  std::array<double, 42> jacobian_array = model_handle_->getZeroJacobian(franka::Frame::kEndEffector);
-
-  // 将array类转成矩阵
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> coriolis(coriolis_array.data());
-  Eigen::Map<Eigen::Matrix<double, 7, 7>> mass(mass_array.data());
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> q(robot_state.q.data());
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
-  Eigen::Map<Eigen::Matrix<double, 7, 1>> tau_J_d(robot_state.tau_J_d.data());
-  Eigen::Affine3d transform(Eigen::Matrix4d::Map(robot_state.O_T_EE.data()));  // 齐次变换矩阵
-  Eigen::Vector3d position(transform.translation());
-  Eigen::Quaterniond orientation = Eigen::Quaterniond(transform.rotation());
-
-  // 计算雅可比
-  Eigen::Map<Eigen::Matrix<double, 6, 7>> jacobian(jacobian_array.data());//完整雅可比
-  Eigen::Map<Eigen::Matrix<double, 6, 7>> jacobian_old(jacobian_array_old.data());  
-  Eigen::Matrix<double, 6, 7> jacobian_dot;
-  double r1 = 0.01;
-  if (firstUpdate)
+  Eigen::Matrix<double, 7, 1> NullSpaceImpedanceMBObserverController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)
   {
-    // debug
-    myfile3.open("/home/wd/NullSpaceImpedanceMBObserverController.txt");
-    myfile3 << "NullSpaceImpedanceMBObserverController.15——109\n" << std::endl;
-
-    S1 = jacobian;   //0时刻
-    jacobian_dot.setZero();
-    S1_dot.setZero();
+    Eigen::Matrix<double, 7, 1> tau_d_saturated{};
+    for (size_t i = 0; i < 7; i++)
+    {
+      double difference = tau_d_calculated[i] - tau_J_d[i];
+      tau_d_saturated[i] = tau_J_d[i] + std::max(std::min(difference, delta_tau_max), -delta_tau_max); // 6
+    }
+    return tau_d_saturated;
   }
-  else
+
+  void NullSpaceImpedanceMBObserverController::upDateParam()
   {
-    /* jacobian_dot= */ S1_dot = (jacobian - S1) / r1;
-    S1 = S1_dot * t.toSec() + S1;
+    // 获取动力学数据
+    this->M = Eigen::Map<Eigen::Matrix<double, 7, 7>>(model_handle_->getMass().data());
+    this->c = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getCoriolis().data());
+    this->G = Eigen::Map<Eigen::Matrix<double, 7, 1>>(model_handle_->getGravity().data());
+    this->J = Eigen::Map<Eigen::Matrix<double, 6, 7>>(model_handle_->getZeroJacobian(franka::Frame::kEndEffector).data());
+
+    // 获取传感器数据
+    this->robot_state = state_handle_->getRobotState();
+    this->q = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.q.data());
+    this->dq = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.dq.data());
+    this->tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
+    this->T = Eigen::Affine3d(Eigen::Matrix4d::Map(robot_state.O_T_EE.data())); // 齐次变换矩阵
+    this->X << Eigen::Vector3d(this->T.translation()), Eigen::Quaterniond(this->T.rotation()).toRotationMatrix().eulerAngles(2, 1, 0);
+    this->dX = this->J * this->dq;
+
+    pinInteractive->forwardKinematics(this->q);
+    pinInteractive->updateFramePlacements();
+
+    // pinInteractive->computeJointJacobians(this->J_pin, this->q);
+    pinInteractive->computeCoriolisMatrix(this->C_pin, this->q, this->dq);
   }
-  jacobian_array_old = jacobian_array;
 
-  // 误差计算
-  Eigen::Matrix<double, 6, 1> s;
-  Eigen::Matrix<double, 6, 1> error;
-  Eigen::Matrix<double, 6, 1> error_dot;
-  error.head(3) << position_d - position;  // 提取前三个元素
-  if (orientation_d.coeffs().dot(orientation.coeffs()) < 0.0) {
-    orientation.coeffs() << -orientation.coeffs();
-  }
-  Eigen::Quaterniond error_quaternion(orientation.inverse() * orientation_d);
-  error.tail(3) << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
-  error.tail(3) << transform.rotation() * error.tail(3);  // 提取后三个元素
-  error_dot = -jacobian * dq;                             // 0 - jacobian * dq
-
-  // 伪逆矩阵
-  Eigen::MatrixXd jacobian_pinv;
-  Eigen::MatrixXd I = Eigen::MatrixXd::Identity(7, 7);
-  weightedPseudoInverse(jacobian, jacobian_pinv, mass);
-
-  //基于动量的观测器
-  Eigen::Matrix<double, 7, 1> r;//残差向量
-  Eigen::Matrix<double, 7, 1> p;//广义动量
-  Eigen::Matrix<double, 7, 1> H;//积分式子
-  Eigen::Matrix<double, 7, 1> H_dot;//积分式子
-
-  if (firstUpdate)
+  void NullSpaceImpedanceMBObserverController::recordData()
   {
-    r.setZero();
-    p.setZero();
-    H.setZero();
-    H_dot.setZero();
-    firstUpdate = false;
+
+    // this->myfile << "Z: \n";
+    // this->myfile << this->Z << "\n";
+    // this->myfile << "Z_inv: \n";
+    // this->myfile << this->Z_inv << "\n";
+    // this->myfile << "dZ_inv: \n";
+    // this->myfile << this->dZ_inv << "\n";
+    // this->myfile << "Lambdax_inv: \n";
+    // this->myfile << this->Lambdax_inv << "\n";
+    // this->myfile << "Lambdav: \n";
+    // this->myfile << this->Lambdav << "\n";
+    // this->myfile << "ux: \n";
+    // this->myfile << this->ux << "\n";
+    // this->myfile << "uv: \n";
+    // this->myfile << this->uv << "\n";
+
+    this->myfile << "tau_msr: " << this->tau_msr.transpose() << "\n";
+    this->myfile << "dtau_msr: " << this->dtau_msr.transpose() << "\n";
+    this->myfile << "ddxc: " << this->ddxc.transpose() << "\n";
+    this->myfile << "dvc: " << this->dvc.transpose() << "\n";
+
+    this->myfile << "------------------" << std::endl;
   }
-  else
+
+  void NullSpaceImpedanceMBObserverController::complianceParamCallback(franka_example_controllers::nullspace_impedance_controller_paramConfig &config, uint32_t /*level*/)
+  {
+    if (time == 0)
+    {
+      Kp << config.Kp * Eigen::MatrixXd::Identity(3, 3);
+      Kv << config.Kv * Eigen::MatrixXd::Identity(3, 3);
+
+      PD_D << config.mbPD_D * Eigen::MatrixXd::Identity(3, 3);
+      PD_K << config.mbPD_K * Eigen::MatrixXd::Identity(3, 3);
+    }
+    Kp_d << config.Kp * Eigen::MatrixXd::Identity(3, 3);
+    Kv_d << config.Kv * Eigen::MatrixXd::Identity(3, 3);
+
+    PD_D_d << config.mbPD_D * Eigen::MatrixXd::Identity(3, 3);
+    PD_K_d << config.mbPD_K * Eigen::MatrixXd::Identity(3, 3);
+  }
+
+  void NullSpaceImpedanceMBObserverController::controllerParamRenew()
   {
   }
-  // 命令加速度与输入力矩
-  Eigen::VectorXd qc1(7), qc2(7), tau_d(7), xc(6);
-  xc << /*ddq + */ Kp * error + Kv * error_dot /* - jacobian * mass.inverse() * r */;
-  qc1 << jacobian_pinv * (xc - S1_dot * dq);
-  Eigen::MatrixXd N = I - jacobian_pinv * jacobian;
-  qc2 << N * (/* task2_ddq_d = 0 */ mass.inverse() *(Kd * (q_d - q) + Bd * (dq_d - dq)));
-  tau_d << mass * (qc1 + qc2) + coriolis;
 
-  //上一个时刻的数据
-
-  // debug
-  time3++;
-  myfile3 << " " << std::endl;
-  myfile3 << "time3: " << time3 << "_"<< std::endl;
-  myfile3 << "Kp: " << std::endl;
-  myfile3 << Kp << std::endl;
-  myfile3 << "Kv: " << std::endl;
-  myfile3 << Kv << std::endl;
-  myfile3 << "R: " << std::endl;
-  myfile3 << transform.rotation() << std::endl;
-  myfile3 << "Kd: " << std::endl;
-  myfile3 << Kd << std::endl;
-  myfile3 << "Bd: " << std::endl;
-  myfile3 << Bd << std::endl;
-  myfile3 << "Md: " << std::endl;
-  myfile3 << Md << std::endl;
-  myfile3 << "" << std::endl;
-  myfile3 << "q: " << q.transpose() << std::endl;
-  myfile3 << "dq: " << dq.transpose() << std::endl;
-  myfile3 << "q_d: " << q_d.transpose() << std::endl;
-  myfile3 << "dq_d: " << dq_d.transpose() << std::endl;
-  myfile3 << "position_d: " << position_d.transpose() << std::endl;
-  myfile3 << "position: " << position.transpose() << std::endl;
-  myfile3 << "error: " << error.transpose() << std::endl;
-  myfile3 << "error_dot: " << error_dot.transpose() << std::endl;
-  myfile3 << "jacobian:" << std::endl;
-  myfile3 << jacobian << std::endl;
-  myfile3 << "S1_dot:" << std::endl;
-  myfile3 << S1_dot << std::endl;
-  Eigen::MatrixXd II = jacobian * jacobian_pinv;
-  myfile3 << "jacobian * jacobian_pinv:" << std::endl;
-  myfile3 << II << std::endl;
-  myfile3 << "qc1: " << qc1.transpose() << std::endl;
-  myfile3 << "qc2: " << qc2.transpose() << std::endl;
-  myfile3 << "tau_d: " << tau_d.transpose() << std::endl;
-
-  //画图
-  for(int i = 0; i < 7; i++)
-  {
-    // param_debug.qc1[i] = qc1[i];
-    // param_debug.qc2[i] = qc2[i];
-    param_debug.tau_d[i] = tau_d[i];
-  }
-  paramForDebug.publish(param_debug);
-
-  // 平滑命令
-  tau_d << saturateTorqueRate(tau_d, tau_J_d);
-  for (size_t i = 0; i < 7; ++i) {
-    joint_handles_[i].setCommand(tau_d(i));  // 关节句柄设置力矩命令
-  }
-
-  // 目标位置，控制参数更新
-  controllerParamRenew();
-}
-
-Eigen::Matrix<double, 7, 1> NullSpaceImpedanceMBObserverController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1>& tau_d_calculated,const Eigen::Matrix<double, 7, 1>& tau_J_d) 
-{  
-  Eigen::Matrix<double, 7, 1> tau_d_saturated{};
-  for (size_t i = 0; i < 7; i++) {
-    double difference = tau_d_calculated[i] - tau_J_d[i];
-    tau_d_saturated[i] = tau_J_d[i] + std::max(std::min(difference, delta_tau_max), - delta_tau_max);//6
-  }
-  return tau_d_saturated;
-}
-
-void NullSpaceImpedanceMBObserverController::complianceParamCallback(franka_example_controllers::nullspace_impedance_MBobserver_controller_paramConfig& config,uint32_t /*level*/) 
-{
-  Kp_target.setIdentity();
-  Kp_target.topLeftCorner(3, 3) << config.Kp_pos * Eigen::Matrix3d::Identity();
-  Kp_target.bottomRightCorner(3, 3) << config.Kp_ori * Eigen::Matrix3d::Identity();
-
-  Kv_target.setIdentity();
-  Kv_target.topLeftCorner(3, 3) << config.Kv_pos * Eigen::Matrix3d::Identity();
-  Kv_target.bottomRightCorner(3, 3) << config.Kv_ori * Eigen::Matrix3d::Identity();
-
-  Kd = config.Kd * Eigen::MatrixXd::Identity(7, 7);
-  Bd = config.Bd * Eigen::MatrixXd::Identity(7, 7);
-  Md = config.Md * Eigen::MatrixXd::Identity(7, 7);
-}
-
-void NullSpaceImpedanceMBObserverController::controllerParamRenew() 
-{
-  Kp = filter_params * Kp_target + (1.0 - filter_params) * Kp;
-  Kv = filter_params * Kv_target + (1.0 - filter_params) * Kv;
-
-  Kd = filter_params * Kd + (1.0 - filter_params) * Kd;
-  Bd = filter_params * Bd + (1.0 - filter_params) * Bd;
-  Md = filter_params * Md + (1.0 - filter_params) * Md;
-}
-
-//X-Y-Z固定角
-Eigen::Vector3d NullSpaceImpedanceMBObserverController::toEulerAngle(Eigen::Matrix3d R) 
-{
-  Eigen::Vector3d orientation;
-  
-  //Y betha
-  orientation(1) = atan2(-R(2, 0), std::fabs(std::sqrt(std::pow(R(0, 0), 2) + std::pow(R(1, 0), 2))));
-
-  //Z alpha
-  orientation(2) = atan2(R(1, 0) / cos(orientation(1)), R(0, 0) / cos(orientation(1)));
-
-  //X r
-  orientation(0) = atan2(R(2, 1) / cos(orientation(1)), R(2, 2) / cos(orientation(1)));
-
-  return orientation;
-}
-
-}  // namespace franka_example_controllers
+} // namespace franka_example_controllers
 
 PLUGINLIB_EXPORT_CLASS(franka_example_controllers::NullSpaceImpedanceMBObserverController,
                        controller_interface::ControllerBase)

@@ -79,7 +79,7 @@ catkin_package(
 add_library(franka_example_controllers
   src/nullspace_impedance_controller.cpp
   src/nullspace_impedance_EBobserver_controller.cpp
-  # src/nullspace_impedance_MBobserver_controller.cpp
+  src/nullspace_impedance_MBobserver_controller.cpp
   src/trajectory.cpp
   src/pinocchino_interactive.cpp
 )

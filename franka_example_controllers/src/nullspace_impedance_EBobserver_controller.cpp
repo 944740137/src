@@ -220,7 +220,7 @@ namespace franka_example_controllers
       ddxc = ddX_d.block(0, 0, 3, 1) + P * dXerror.block(0, 0, 3, 1) + Lambdax_inv * ((ux + K) * s + J1_pinv.transpose() * tau_msr);
 
     dvc = Lambdav.inverse() * ((uv + Bv) * (-v) + Z.transpose() * Kd * (task2_q_d - q));
-    ddqc = J1_pinv * (ddxc - dJ1 * dq) + Z * (dvc + dZ_inv * dq);
+    ddqc = J1_pinv * (ddxc - dJ1 * dq) + Z * (dvc - dZ_inv * dq);
 
     // this->tau_task = J1.transpose() * (Lambdax_inv.inverse() * (-P * dx - dJ1 * dq) + (ux + K) * s /* + J1_pinv.transpose() * tau_msr */);
     // this->tau_null = Z_inv.transpose() * (Lambdav * dZ_inv * dq + (uv + Bv) * v + Z.transpose() * Kd * (q - task2_q_d));
@@ -380,16 +380,16 @@ namespace franka_example_controllers
       P << config.P * Eigen::MatrixXd::Identity(3, 3);
       K << config.K * Eigen::MatrixXd::Identity(3, 3);
 
-      PD_D << config.PD_D * Eigen::MatrixXd::Identity(3, 3);
-      PD_K << config.PD_K * Eigen::MatrixXd::Identity(3, 3);
+      PD_D << config.ebPD_D * Eigen::MatrixXd::Identity(3, 3);
+      PD_K << config.ebPD_K * Eigen::MatrixXd::Identity(3, 3);
 
       Bv << config.Bv * Eigen::MatrixXd::Identity(4, 4);
       Kd << config.Kd * Eigen::MatrixXd::Identity(7, 7);
 
       Gamma_inv << config.Gamma_inv * Eigen::MatrixXd::Identity(7, 7);
     }
-    PD_D_d << config.PD_D * Eigen::MatrixXd::Identity(3, 3);
-    PD_K_d << config.PD_K * Eigen::MatrixXd::Identity(3, 3);
+    PD_D_d << config.ebPD_D * Eigen::MatrixXd::Identity(3, 3);
+    PD_K_d << config.ebPD_K * Eigen::MatrixXd::Identity(3, 3);
 
     P_d << config.P * Eigen::MatrixXd::Identity(3, 3);
     K_d << config.K * Eigen::MatrixXd::Identity(3, 3);
