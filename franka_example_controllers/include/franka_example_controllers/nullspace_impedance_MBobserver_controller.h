@@ -89,14 +89,15 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 7> M_pin = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> C_pin = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 1> G_pin = Eigen::MatrixXd::Zero(7, 1);
-    Eigen::Matrix<double, 6, 7> J_pin = Eigen::MatrixXd::Zero(6, 7);
+    Eigen::Matrix<double, 6, 7> J_pin1 = Eigen::MatrixXd::Zero(6, 7);
+
     // 计算雅克比
     Eigen::Matrix<double, 6, 7> dJ = Eigen::MatrixXd::Zero(6, 7); // 未滤波
     Eigen::Matrix<double, 6, 7> J_old = Eigen::MatrixXd::Zero(6, 7);
     Eigen::Matrix<double, 6, 7> S1 = Eigen::MatrixXd::Zero(6, 7);
     Eigen::Matrix<double, 6, 7> S1_dot = Eigen::MatrixXd::Zero(6, 7);
 
-    /********************************************控制器********************************************/
+    /********************************************3自由度控制器********************************************/
     Eigen::Matrix<double, 3, 3> Jm = Eigen::MatrixXd::Zero(3, 3);
     Eigen::Matrix<double, 3, 1> Ja = Eigen::MatrixXd::Zero(3, 1);
     Eigen::Matrix<double, 3, 3> Jb = Eigen::MatrixXd::Zero(3, 3);
@@ -154,6 +155,12 @@ namespace franka_example_controllers
     // 观测器
     Eigen::Matrix<double, 7, 1> r = Eigen::MatrixXd::Zero(7, 1);
 
+    // franka估计
+    Eigen::Matrix<double, 7, 1> tau_ext = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 6, 1> F_ext0 = Eigen::MatrixXd::Zero(6, 1);
+    Eigen::Matrix<double, 6, 1> F_extK = Eigen::MatrixXd::Zero(6, 1);
+
+    /********************************************6自由度控制器********************************************/
   };
 
 } // namespace franka_example_controllers
