@@ -21,7 +21,22 @@ extern pinLibInteractive *pinInteractive;
 
 namespace franka_example_controllers
 {
-
+  long get_system_time_nanosecond()
+  {
+    struct timespec timestamp = {};
+    if (0 == clock_gettime(CLOCK_REALTIME, &timestamp))
+      return timestamp.tv_sec * 1000000000 + timestamp.tv_nsec;
+    else
+      return 0;
+  }
+  long get_system_time_microsecond()
+  {
+    struct timeval timestamp = {};
+    if (0 == gettimeofday(&timestamp, NULL))
+      return timestamp.tv_sec * 1000000 + timestamp.tv_usec;
+    else
+      return 0;
+  }
   bool NullSpaceImpedanceMBObserverController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
   {
     std::cout << "[------------------] init1:NullSpaceImpedanceMBObserverController" << std::endl;
@@ -133,48 +148,38 @@ namespace franka_example_controllers
 
     if (pinInteractive == nullptr)
       pinInteractive = new pinLibInteractive();
+
+    struct sched_param param = {5};
+    if (sched_setscheduler(getpid(), SCHED_FIFO, &param) != 0)
+    {
+      printf("-------------主进程初始化失败-------------\n");
+    };
+    sched_getparam(0, &param);
+    printf("-------------主进程初始化成功，调度策略: %d, 调度优先级: %d-------------\n",
+           sched_getscheduler(0), param.sched_priority);
   }
 
-  void NullSpaceImpedanceMBObserverController::update(const ros::Time & /*time*/, const ros::Duration &t)
+  void NullSpaceImpedanceMBObserverController::threeDOF(Eigen::Matrix<double, 6, 1> &X_d,
+                                                        Eigen::Matrix<double, 6, 1> &dX_d,
+                                                        Eigen::Matrix<double, 6, 1> &ddX_d,
+                                                        Eigen::Matrix<double, 6, 1> &Xerror,
+                                                        Eigen::Matrix<double, 6, 1> &dXerror,
+                                                        const ros::Duration &t)
   {
     static Eigen::Matrix<double, 7, 1> tmp1 = Eigen::MatrixXd::Zero(7, 1); // 待积分
     static Eigen::Matrix<double, 7, 1> tmp2 = Eigen::MatrixXd::Zero(7, 1); // 待积分
     static Eigen::Matrix<double, 7, 1> tmpI = Eigen::MatrixXd::Zero(7, 1); // 累加
 
-    upDateParam();
-    recordData();
-
     // this->myfile << "tmp1: " << tmp1.transpose() << "\n";
     // this->myfile << "tmp2: " << tmp2.transpose() << "\n";
     // this->myfile << "tmpI: " << tmpI.transpose() << "\n";
-    this->myfile << "------------------" << std::endl;
-
-    double r1 = 0.1;
-    if (time == 0)
-    {
-      this->S1 = this->J;
-      this->S1_dot.setZero();
-      this->dJ.setZero();
-    }
-    else
-    {
-      /* dJ= */ this->S1_dot = (this->J - this->S1) / r1;
-      this->S1 = this->S1_dot * t.toSec() + this->S1;
-    }
-    this->dJ = S1_dot;
-
-    // 轨迹和误差  3轨迹最差
-    static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
-    // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
 
     // 伪逆矩阵计算
     Eigen::MatrixXd J_pinv;
     Eigen::MatrixXd I = Eigen::MatrixXd::Identity(7, 7);
     weightedPseudoInverse(J, J_pinv, this->M);
 
+    this->myfile << "------------------" << std::endl;
     // Z
     this->J1 = this->J.block(0, 0, 3, 7);
     this->dJ1 = dJ.block(0, 0, 3, 7);
@@ -221,7 +226,7 @@ namespace franka_example_controllers
 
     if (ifPDplus)
     {
-      ddxc = Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) - J1_pinv.transpose() * r);
+      ddxc = Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) + J1_pinv.transpose() * r);
     }
     else
     {
@@ -240,10 +245,50 @@ namespace franka_example_controllers
 
     this->tau_d << M * ddqc + c;
 
+    // 目标位置，控制参数更新
+    controllerParamRenew();
+
     // 记录数据
     this->time++;
+  }
 
-    // this->myfile << "r" << r.block(0, 0, 3, 1).norm() << "\n";
+  void NullSpaceImpedanceMBObserverController::update(const ros::Time & /*time*/, const ros::Duration &t)
+  {
+    long time1 = get_system_time_microsecond();
+
+    upDateParam();
+    recordData();
+    double r1 = 0.1;
+    double r3 = 0.2;
+    if (time == 0)
+    {
+      this->S1 = this->J;
+      this->S3 = this->dq;
+
+      this->S1_dot.setZero();
+      this->S3_dot.setZero();
+
+      this->dJ.setZero();
+    }
+    else
+    {
+      /* dJ= */ this->S1_dot = (this->J - this->S1) / r1;
+      this->S1 = this->S1_dot * t.toSec() + this->S1;
+
+      /* ddq= */ this->S3_dot = (this->dq - this->S3) / r3;
+      this->S3 = this->S3_dot * t.toSec() + this->S3;
+    }
+    this->dJ = S1_dot;
+    // this->dq = S3;
+
+    // 轨迹和误差  3轨迹最差
+    static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
+    // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+
+    threeDOF(X_d, dX_d, ddX_d, Xerror, dXerror, t);
 
     // 画图
     for (int i = 0; i < 7; i++)
@@ -254,6 +299,8 @@ namespace franka_example_controllers
       this->param_debug.tau_msr[i] = this->tau_msr[i];
       this->param_debug.dtau_msr[i] = this->dtau_msr[i];
       this->param_debug.tau_ext[i] = this->tau_ext[i];
+      this->param_debug.S3[i] = this->S3[i];
+      this->param_debug.dq[i] = this->dq[i];
       if (i == 6)
         break;
       this->param_debug.F_ext0[i] = this->F_ext0[i];
@@ -270,15 +317,15 @@ namespace franka_example_controllers
     }
     this->paramForDebug.publish(this->param_debug);
 
-    // 目标位置，控制参数更新
-    controllerParamRenew();
-
     // 平滑命令
     tau_d << saturateTorqueRate(this->tau_d, this->tau_J_d);
     for (size_t i = 0; i < 7; ++i)
     {
       joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
     }
+
+    long time2 = get_system_time_microsecond();
+    // printf("time: %ld\n", time2 - time1); // 微秒
   }
 
   Eigen::Matrix<double, 7, 1> NullSpaceImpedanceMBObserverController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)
@@ -314,6 +361,7 @@ namespace franka_example_controllers
     this->F_ext0 = Eigen::Map<Eigen::Matrix<double, 6, 1>>(robot_state.O_F_ext_hat_K.data());
     this->F_extK = Eigen::Map<Eigen::Matrix<double, 6, 1>>(robot_state.K_F_ext_hat_K.data());
 
+    this->comRatio = robot_state.control_command_success_rate;
     //
     pinInteractive->forwardKinematics(this->q);
     pinInteractive->updateFramePlacements();
@@ -327,7 +375,7 @@ namespace franka_example_controllers
   void NullSpaceImpedanceMBObserverController::recordData()
   {
     this->myfile << "time: " << this->time << "_\n";
-    // this->myfile << "J: \n";
+    this->myfile << "comRatio: " << this->comRatio << "_\n";
     // this->myfile << this->J << "\n";
     // this->myfile << "J: \n";
     // this->myfile << this->J_pin1 << "\n";
@@ -364,6 +412,15 @@ namespace franka_example_controllers
 
   void NullSpaceImpedanceMBObserverController::controllerParamRenew()
   {
+    Kp = filter_params * Kp_d + (1.0 - filter_params) * Kp;
+    Kv = filter_params * Kv_d + (1.0 - filter_params) * Kv;
+    KI = filter_params * KI_d + (1.0 - filter_params) * KI;
+
+    Bv = filter_params * Bv_d + (1.0 - filter_params) * Bv;
+    Kd = filter_params * Kd_d + (1.0 - filter_params) * Kd;
+
+    PD_D = filter_params * PD_D_d + (1.0 - filter_params) * PD_D;
+    PD_K = filter_params * PD_K_d + (1.0 - filter_params) * PD_K;
   }
 
 } // namespace franka_example_controllers

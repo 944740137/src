@@ -46,6 +46,7 @@ namespace franka_example_controllers
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_; // 机器人全部状态
     std::unique_ptr<franka_hw::FrankaModelHandle> model_handle_; // 机器人的动力学和运动学模型
     std::vector<hardware_interface::JointHandle> joint_handles_; // 关节状态类
+    double comRatio = 0;
 
     // 记录和时刻
     // bool firstUpdate = true; // 用于判断是不是第一个控制周期，计算雅可比导数。
@@ -57,6 +58,17 @@ namespace franka_example_controllers
     ros::NodeHandle dynamic_reconfigure_compliance_param_node_;
     void complianceParamCallback(franka_example_controllers::nullspace_impedance_controller_paramConfig &config, uint32_t level);
     void controllerParamRenew();
+    void sixDOF(Eigen::Matrix<double, 6, 1> &X_d,
+                Eigen::Matrix<double, 6, 1> &dX_d,
+                Eigen::Matrix<double, 6, 1> &ddX_d,
+                Eigen::Matrix<double, 6, 1> &Xerror,
+                Eigen::Matrix<double, 6, 1> &dXerror);
+    void threeDOF(Eigen::Matrix<double, 6, 1> &X_d,
+                  Eigen::Matrix<double, 6, 1> &dX_d,
+                  Eigen::Matrix<double, 6, 1> &ddX_d,
+                  Eigen::Matrix<double, 6, 1> &Xerror,
+                  Eigen::Matrix<double, 6, 1> &dXerror,
+                  const ros::Duration &t);
 
     // 发布和记录数据
     ros::Publisher paramForDebug;
@@ -73,6 +85,8 @@ namespace franka_example_controllers
     franka::RobotState robot_state;
     Eigen::Matrix<double, 7, 1> q = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> dq = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> S3 = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> S3_dot = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> tau_J_d = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> tau_J = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> tau_d = Eigen::MatrixXd::Zero(7, 1);
@@ -96,6 +110,11 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 6, 7> J_old = Eigen::MatrixXd::Zero(6, 7);
     Eigen::Matrix<double, 6, 7> S1 = Eigen::MatrixXd::Zero(6, 7);
     Eigen::Matrix<double, 6, 7> S1_dot = Eigen::MatrixXd::Zero(6, 7);
+
+    // franka估计
+    Eigen::Matrix<double, 7, 1> tau_ext = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 6, 1> F_ext0 = Eigen::MatrixXd::Zero(6, 1);
+    Eigen::Matrix<double, 6, 1> F_extK = Eigen::MatrixXd::Zero(6, 1);
 
     /********************************************3自由度控制器********************************************/
     Eigen::Matrix<double, 3, 3> Jm = Eigen::MatrixXd::Zero(3, 3);
@@ -154,11 +173,6 @@ namespace franka_example_controllers
 
     // 观测器
     Eigen::Matrix<double, 7, 1> r = Eigen::MatrixXd::Zero(7, 1);
-
-    // franka估计
-    Eigen::Matrix<double, 7, 1> tau_ext = Eigen::MatrixXd::Zero(7, 1);
-    Eigen::Matrix<double, 6, 1> F_ext0 = Eigen::MatrixXd::Zero(6, 1);
-    Eigen::Matrix<double, 6, 1> F_extK = Eigen::MatrixXd::Zero(6, 1);
 
     /********************************************6自由度控制器********************************************/
   };

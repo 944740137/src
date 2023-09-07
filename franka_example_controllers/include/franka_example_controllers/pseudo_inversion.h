@@ -10,8 +10,10 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 #include <Eigen/SVD>
-
+#include <time.h>
 namespace franka_example_controllers {
+
+
 
 inline void pseudoInverse(const Eigen::MatrixXd& M_, Eigen::MatrixXd& M_pinv_, bool damped = true) {
   double lambda_ = damped ? 0.2 : 0.0;

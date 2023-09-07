@@ -4,6 +4,7 @@ float64[7] tau_J_d
 #
 float64[7] q
 float64[7] dq
+float64[7] S3
 # float64[7] ddq
 float64[7] q_d
 float64[7] dq_d
