@@ -189,7 +189,6 @@ void ComputedTorqueMethod<_Dofs>::controllerParamRenew(double filterParams)
     this->cartesianKv = filterParams * this->cartesianKv_d + (1.0 - filterParams) * this->cartesianKv;
 }
 
-
 //
 //
 // 反步控制器

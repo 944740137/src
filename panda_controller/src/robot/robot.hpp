@@ -14,10 +14,6 @@ namespace my_robot
         // limit
         const double dposMax[3] = {1.7};
         const double doriMax[3] = {2.5};
-        const double qMax[7] = {2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159};
-        const double qMin[7] = {-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159};
-        const double dqLimit[7] = {2.1750, 2.1750, 2.1750, 2.1750, 2.6100, 2.6100, 2.6100};
-        const double ddqLimit[7] = {15, 7.5, 10, 12.5, 15, 10, 10};
 
         // sensor
         Eigen::Matrix<double, _Dofs, 1> q0;
@@ -54,6 +50,11 @@ namespace my_robot
         Eigen::Matrix<double, _Dofs, 6> externdJ_inv;
 
     public:
+        double qMax[7] = {2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159};
+        double qMin[7] = {-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159};
+        double dqLimit[7] = {2.1750, 2.1750, 2.1750, 2.1750, 2.6100, 2.6100, 2.6100};
+        double ddqLimit[7] = {15, 7.5, 10, 12.5, 15, 10, 10};
+        
         Robot(const Robot &) = delete;
         void operator=(const Robot &) = delete;
 

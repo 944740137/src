@@ -14,7 +14,7 @@ private:
     int timeoutCount = 0;
     int HeartBeatRecord = 0;
 
-    const int maxTimeoutCount = 3;
+    const int maxTimeoutCount = 5;
 
     Message messageBuff;
     SharedMemory *sharedMemoryBuff;

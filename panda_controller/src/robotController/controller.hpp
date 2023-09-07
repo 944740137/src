@@ -27,7 +27,7 @@ namespace robot_controller
                 status = RunStatus::wait_;
         }
     };
-    
+
     // _Dofs自由度机器人控制器
     template <int _Dofs, typename pubDataType>
     class Controller
@@ -84,6 +84,7 @@ namespace robot_controller
 
         //  控制律
         ControllerLawType controllerLawType = ControllerLawType::PD_;
+        ControllerLawType controllerLawType_d = ControllerLawType::PD_;
         std::unique_ptr<ControllerLaw<_Dofs>> controllerLaw;
         ControllerParamBase<_Dofs> controllerParam;
 
@@ -98,7 +99,7 @@ namespace robot_controller
         void setRecord(int recordPeriod);
         const std::string &getControllerLawName();
         void dynamicSetParameter();
-        void changeControllerLaw();
+        void changeControllerLaw(ControllerLawType type);
 
         // init
         void init(int recordPeriod, my_robot::Robot<_Dofs> *robot);
@@ -140,11 +141,10 @@ namespace robot_controller
             return this->controllerLaw->controllerLawName;
     }
     template <int _Dofs, typename pubDataType>
-    void Controller<_Dofs, pubDataType>::changeControllerLaw()
+    void Controller<_Dofs, pubDataType>::changeControllerLaw(ControllerLawType type)
     {
-        newControllerLaw(controllerLaw, ControllerLawType::ComputedTorqueMethod_, plannerTaskSpace);
-        // newControllerLaw(controllerLaw, ControllerLawType::Backstepping_, plannerTaskSpace);
-        // newControllerLaw(controllerLaw, ControllerLawType::PD_, plannerTaskSpace);
+        if (!newControllerLaw(controllerLaw, type, plannerTaskSpace))
+            printf("ControllerLaw create Error\n");
         dynamicSetParameter();
     }
     template <int _Dofs, typename pubDataType>
@@ -171,7 +171,6 @@ namespace robot_controller
             controllerParam.cartesianParam1[i].value = 50;
             controllerParam.cartesianParam2[i].value = 5;
         }
-        changeControllerLaw();
 
         // 建立通信 建立数据映射
         if (this->communicationModel.createConnect((key_t)SM_ID, (key_t)MS_ID, this->robotDataBuff,
@@ -179,11 +178,29 @@ namespace robot_controller
         {
             printf("通信模型建立成功\n");
         }
+
+        // send
+        this->controllerStateBUff->robotDof = _Dofs;
+        this->controllerStateBUff->controllerStatus = this->nowControllerStatus;
+
+        // read
+        for (int i = 0; i < _Dofs; i++)
+        {
+            robot->qMax[i] = this->controllerCommandBUff->qMax[i];
+            robot->qMin[i] = this->controllerCommandBUff->qMin[i];
+            robot->dqLimit[i] = this->controllerCommandBUff->dqLimit[i];
+            robot->ddqLimit[i] = this->controllerCommandBUff->ddqLimit[i];
+        }
         this->nowStopTaskNum = this->controllerCommandBUff->stopTaskNum;
         this->nowPlanTaskNum = this->controllerCommandBUff->planTaskNum;
-        this->jogSpeed = this->controllerCommandBUff->jogSpeed;
-        this->runSpeed = this->controllerCommandBUff->runSpeed;
-        this->controllerStateBUff->controllerStatus = this->nowControllerStatus;
+        this->jogSpeed = this->controllerCommandBUff->jogSpeed_d;
+        this->jogSpeed_d = this->controllerCommandBUff->jogSpeed_d;
+        this->runSpeed = this->controllerCommandBUff->runSpeed_d;
+        this->runSpeed_d = this->controllerCommandBUff->runSpeed_d;
+        this->controllerLawType = this->controllerCommandBUff->controllerLawType_d;
+        this->controllerLawType_d = this->controllerCommandBUff->controllerLawType_d;
+
+        changeControllerLaw(this->controllerLawType);
     }
 
     // run
@@ -223,8 +240,9 @@ namespace robot_controller
 
         // read
         this->jogSign = this->controllerCommandBUff->jogSign;
-        this->jogSpeed_d = this->controllerCommandBUff->jogSpeed;
-        this->runSpeed_d = this->controllerCommandBUff->runSpeed;
+        this->jogSpeed_d = this->controllerCommandBUff->jogSpeed_d;
+        this->runSpeed_d = this->controllerCommandBUff->runSpeed_d;
+        this->controllerLawType_d = this->controllerCommandBUff->controllerLawType_d;
         if (this->nowPlanTaskNum != this->controllerCommandBUff->planTaskNum) // 新的规划任务
         {
             this->plannerTaskSpace = this->controllerCommandBUff->plannerTaskSpace;
@@ -244,14 +262,18 @@ namespace robot_controller
     {
         if (!this->connectStatus)
             return;
-
-        if (this->jogSpeed != this->jogSpeed_d) // 更改速度
+        if (this->controllerLawType != this->controllerLawType_d) // 切换控制器
+        {
+            changeControllerLaw(this->controllerLawType_d);
+            this->controllerLawType = this->controllerLawType_d;
+        }
+        if (this->jogSpeed != this->jogSpeed_d) // 更改点动速度
         {
             this->jogSpeed_d = std::max(0.01, std::min(1.0, this->jogSpeed_d)); // 1%和100%
             // recal
             this->jogSpeed = this->jogSpeed_d;
         }
-        if (this->runSpeed != this->runSpeed_d) // 更改速度
+        if (this->runSpeed != this->runSpeed_d) // 更改运行速度
         {
             this->runSpeed_d = std::max(0.01, std::min(1.0, this->runSpeed_d));
             // recal
@@ -278,6 +300,7 @@ namespace robot_controller
     template <int _Dofs, typename pubDataType>
     void Controller<_Dofs, pubDataType>::calDesireNext(my_robot::Robot<_Dofs> *robot)
     {
+
         for (int i = 0; i < _Dofs; i++)
         {
             switch (this->nowControllerStatus)
@@ -306,6 +329,7 @@ namespace robot_controller
     template <int _Dofs, typename pubDataType>
     void Controller<_Dofs, pubDataType>::calError(my_robot::Robot<_Dofs> *robot)
     {
+
         if (controllerLaw.get() == nullptr)
             return;
         // 关节误差与误差导数
