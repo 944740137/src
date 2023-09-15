@@ -54,7 +54,7 @@ namespace my_robot
         double qMin[7] = {-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159};
         double dqLimit[7] = {2.1750, 2.1750, 2.1750, 2.1750, 2.6100, 2.6100, 2.6100};
         double ddqLimit[7] = {15, 7.5, 10, 12.5, 15, 10, 10};
-        
+
         Robot(const Robot &) = delete;
         void operator=(const Robot &) = delete;
 
@@ -284,26 +284,9 @@ namespace my_robot
     template <int _Dofs>
     void Robot<_Dofs>::calculation(Eigen::Matrix<double, _Dofs, 1> ddq_d)
     {
-        pinocchio::Data *data = pPandaDynLibManager->getpData();
-        pinocchio::Model *model = pPandaDynLibManager->getpModel();
-
-        pPandaDynLibManager->forwardKinematics(*model, *data, this->q);
-        pPandaDynLibManager->updateFramePlacements(*model, *data);
-
-        pPandaDynLibManager->computeJointJacobians(*model, *data, this->q);
-        this->J = data->J;
-        pPandaDynLibManager->computeJointJacobiansTimeVariation(*model, *data, q, dq);
-        this->dJ = data->dJ;
-
-        // pPandaDynLibManager->rnea(*model, *data, this->q, this->dq, ddq_d);
-        pPandaDynLibManager->computeGeneralizedGravity(*model, *data, this->q);
-        this->G = data->g;
-        pPandaDynLibManager->computeCoriolisMatrix(*model, *data, this->q, this->dq);
-        this->C = data->C;
-        pPandaDynLibManager->crba(*model, *data, this->q);
-        data->M.triangularView<Eigen::StrictlyLower>() = data->M.transpose().triangularView<Eigen::StrictlyLower>();
-        this->M = data->M;
-
+        pPandaDynLibManager->upDataModel(this->q);
+        pPandaDynLibManager->computeKinData(this->J, this->dJ, this->q, this->dq);
+        pPandaDynLibManager->computeDynData(this->M, this->C, this->G, this->q, this->dq);
         weightedPseudoInverse(this->J, this->J_inv, this->M);
     }
 

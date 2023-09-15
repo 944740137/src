@@ -80,10 +80,6 @@ add_library(panda_controller
   src/communication/communication.cpp
   src/robotController/pandaController.cpp
   src/rosController/pandaRosController.cpp
-  
-  # src/controllerLaw/computedTorqueMethod.cpp
-  # src/controllerLaw/backstepping.cpp
-  # src/controllerLaw/PD.cpp
 )
 
 

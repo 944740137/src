@@ -15,8 +15,11 @@ template <int _Dofs>
 class PinocchioDynLibManager
 {
 public:
-    pinocchio::Model *pModel;
-    pinocchio::Data *pData;
+    // pinocchio::Model *pModel;
+    // pinocchio::Data *pData;
+
+    pinocchio::Model model;
+    pinocchio::Data data;
 
 public:
     PinocchioDynLibManager(const PinocchioDynLibManager &) = delete;
@@ -27,17 +30,32 @@ public:
 
     explicit PinocchioDynLibManager(const std::string urdf);
 
-    virtual pinocchio::Model* getpModel();
-    virtual pinocchio::Data* getpData();
+    // virtual pinocchio::Model &getModel();
+    // virtual pinocchio::Data &getData();
 
-    virtual void forwardKinematics(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, _Dofs, 1> &q) = 0;
-    virtual void updateFramePlacements(pinocchio::Model &model, pinocchio::Data &data) = 0;
-    virtual void computeJointJacobians(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, _Dofs, 1> &q) = 0;
-    virtual void computeJointJacobiansTimeVariation(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, _Dofs, 1> &q, Eigen::Matrix<double, _Dofs, 1> &dq) = 0;
-    virtual void rnea(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, _Dofs, 1> &q, Eigen::Matrix<double, _Dofs, 1> &dq, Eigen::Matrix<double, _Dofs, 1> &ddq_d) = 0;
-    virtual void computeGeneralizedGravity(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, _Dofs, 1> &q) = 0;
-    virtual void computeCoriolisMatrix(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, _Dofs, 1> &q, Eigen::Matrix<double, _Dofs, 1> &dq) = 0;
-    virtual void crba(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, _Dofs, 1> &q) = 0;
+    // kin
+    virtual void upDataModel(Eigen::Matrix<double, _Dofs, 1> &q) = 0;
+    virtual void computeTcpJacobian(Eigen::Matrix<double, 6, _Dofs> &J,
+                                    Eigen::Matrix<double, 6, _Dofs> &dJ,
+                                    const Eigen::Matrix<double, _Dofs, 1> &q,
+                                    const Eigen::Matrix<double, _Dofs, 1> &dq) = 0;
+    virtual void computeKinData(Eigen::Matrix<double, 6, _Dofs> &J,
+                                Eigen::Matrix<double, 6, _Dofs> &dJ,
+                                const Eigen::Matrix<double, _Dofs, 1> &q,
+                                const Eigen::Matrix<double, _Dofs, 1> &dq) = 0;
+
+    // dyn
+    virtual void computeGeneralizedGravity(Eigen::Matrix<double, _Dofs, 1> &G,
+                                           const Eigen::Matrix<double, _Dofs, 1> &q) = 0;
+    virtual void computeCoriolisMatrix(Eigen::Matrix<double, _Dofs, _Dofs> &C,
+                                       const Eigen::Matrix<double, _Dofs, 1> &q,
+                                       const Eigen::Matrix<double, _Dofs, 1> &dq) = 0;
+    virtual void crba(Eigen::Matrix<double, _Dofs, _Dofs> &M, const Eigen::Matrix<double, _Dofs, 1> &q) = 0;
+    virtual void computeDynData(Eigen::Matrix<double, _Dofs, _Dofs> &M,
+                                Eigen::Matrix<double, _Dofs, _Dofs> &C,
+                                Eigen::Matrix<double, _Dofs, 1> &G,
+                                const Eigen::Matrix<double, _Dofs, 1> &q,
+                                const Eigen::Matrix<double, _Dofs, 1> &dq) = 0;
 };
 template <int _Dofs>
 PinocchioDynLibManager<_Dofs>::~PinocchioDynLibManager()
@@ -46,24 +64,25 @@ PinocchioDynLibManager<_Dofs>::~PinocchioDynLibManager()
 template <int _Dofs>
 PinocchioDynLibManager<_Dofs>::PinocchioDynLibManager(const std::string urdf)
 {
-    static pinocchio::Model model;
-    static pinocchio::Data data;
+    // static pinocchio::Model model;
+    // static pinocchio::Data data;
 
     std::cout << "[robotController] pinocchino动力学库加载urdf:" << urdf << " 文件" << std::endl;
-    pinocchio::urdf::buildModel(urdf, model);
-    data = pinocchio::Data(model);
-    pModel = &model;
-    pData = &data;
+    pinocchio::urdf::buildModel(urdf, this->model);
+    this->data = pinocchio::Data(this->model);
+
+    // pModel = &model;
+    // pData = &data;
 }
 
-template <int _Dofs>
-pinocchio::Model *PinocchioDynLibManager<_Dofs>::getpModel()
-{
-    return pModel;
-}
+// template <int _Dofs>
+// pinocchio::Model &PinocchioDynLibManager<_Dofs>::getModel()
+// {
+//     return this->Model;
+// }
 
-template <int _Dofs>
-pinocchio::Data *PinocchioDynLibManager<_Dofs>::getpData()
-{
-    return pData;
-}
+// template <int _Dofs>
+// pinocchio::Data &PinocchioDynLibManager<_Dofs>::getData()
+// {
+//     return this->Data;
+// }

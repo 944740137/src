@@ -1,4 +1,4 @@
-#pragma once
+// #pragma once
 #include "planner/planner.hpp"
 #include "controllerLaw/controllerLaw.hpp"
 #include <fstream>
@@ -406,12 +406,20 @@ namespace robot_controller
 
         this->myfile << "M:" << n;
         this->myfile << robot->getM() << "\n";
+        this->myfile << "ExternM:" << n;
+        this->myfile << robot->getExternM() << "\n";
         this->myfile << "C: " << n;
         this->myfile << robot->getC() * robot->getdq() << "\n";
+        this->myfile << "Externc: " << n;
+        this->myfile << robot->getExternc() << "\n";
         this->myfile << "G: " << n;
         this->myfile << robot->getG() << n;
-        // this->myfile << "J: " << n;
-        // this->myfile << robot->getJ() << "\n";
+        this->myfile << "ExternG: " << n;
+        this->myfile << robot->getExternG() << n;
+        this->myfile << "J: " << n;
+        this->myfile << robot->getJ() << "\n";
+        this->myfile << "ExternJ: " << n;
+        this->myfile << robot->getExternJ() << "\n";
 
         // this->myfile << "getTorque: " << robot->getTorque().transpose() << "\n";
         // this->myfile << "tau_d: " << this->controllerLaw->tau_d.transpose() << "\n";

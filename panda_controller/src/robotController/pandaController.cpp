@@ -7,8 +7,8 @@ void pandaInit()
 {
     if (pPandaDynLibManager == nullptr)
     {
-        pPandaDynLibManager = new pandaDynLibManager(
-            std::string("/home/wd/workSpace/WDcontroller/ROS/src/franka_description/robots/panda/panda_withoutHand.urdf"));
+        pPandaDynLibManager = new PandaDynLibManager(
+            std::string("/home/wd/workSpace/WDcontroller/ROS/src/franka_description/robots/panda/panda_withoutHand_dyn.urdf"));
     }
     if (pController == nullptr)
     {

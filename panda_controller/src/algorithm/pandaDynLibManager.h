@@ -2,26 +2,38 @@
 
 #define DIM 7
 
-class pandaDynLibManager : public PinocchioDynLibManager<DIM>
+class PandaDynLibManager : public PinocchioDynLibManager<DIM>
 {
 
 public:
-  pandaDynLibManager(const pandaDynLibManager &) = delete;
-  void operator=(const pandaDynLibManager &) = delete;
+  PandaDynLibManager(const PandaDynLibManager &) = delete;
+  void operator=(const PandaDynLibManager &) = delete;
 
-  pandaDynLibManager() = delete;
-  virtual ~pandaDynLibManager();
+  PandaDynLibManager() = delete;
+  ~PandaDynLibManager();
 
-  explicit pandaDynLibManager(const std::string urdf);
-  
-  void forwardKinematics(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q);
-  void updateFramePlacements(pinocchio::Model &model, pinocchio::Data &data);
-  void computeJointJacobians(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q);
-  void computeJointJacobiansTimeVariation(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q, Eigen::Matrix<double, DIM, 1> &dq);
-  void rnea(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q, Eigen::Matrix<double, DIM, 1> &dq, Eigen::Matrix<double, DIM, 1> &ddq_d);
-  void computeGeneralizedGravity(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q);
-  void computeCoriolisMatrix(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q, Eigen::Matrix<double, DIM, 1> &dq);
-  void crba(pinocchio::Model &model, pinocchio::Data &data, Eigen::Matrix<double, DIM, 1> &q);
+  explicit PandaDynLibManager(const std::string urdf);
+
+  void upDataModel(Eigen::Matrix<double, DIM, 1> &q);
+  void computeTcpJacobian(Eigen::Matrix<double, 6, DIM> &J,
+                          Eigen::Matrix<double, 6, DIM> &dJ,
+                          const Eigen::Matrix<double, DIM, 1> &q,
+                          const Eigen::Matrix<double, DIM, 1> &dq);
+  void computeKinData(Eigen::Matrix<double, 6, DIM> &J,
+                      Eigen::Matrix<double, 6, DIM> &dJ,
+                      const Eigen::Matrix<double, DIM, 1> &q,
+                      const Eigen::Matrix<double, DIM, 1> &dq);
+
+  void computeGeneralizedGravity(Eigen::Matrix<double, DIM, 1> &G, const Eigen::Matrix<double, DIM, 1> &q);
+  void computeCoriolisMatrix(Eigen::Matrix<double, DIM, DIM> &C,
+                             const Eigen::Matrix<double, DIM, 1> &q,
+                             const Eigen::Matrix<double, DIM, 1> &dq);
+  void crba(Eigen::Matrix<double, DIM, DIM> &M, const Eigen::Matrix<double, DIM, 1> &q);
+  void computeDynData(Eigen::Matrix<double, DIM, DIM> &M,
+                      Eigen::Matrix<double, DIM, DIM> &C,
+                      Eigen::Matrix<double, DIM, 1> &G,
+                      const Eigen::Matrix<double, DIM, 1> &q,
+                      const Eigen::Matrix<double, DIM, 1> &dq);
 };
 //
-extern pandaDynLibManager *pPandaDynLibManager;
+extern PandaDynLibManager *pPandaDynLibManager;
