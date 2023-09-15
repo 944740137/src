@@ -15,11 +15,9 @@ template <int _Dofs>
 class PinocchioDynLibManager
 {
 public:
-    // pinocchio::Model *pModel;
-    // pinocchio::Data *pData;
-
     pinocchio::Model model;
     pinocchio::Data data;
+    pinocchio::FrameIndex frameId;
 
 public:
     PinocchioDynLibManager(const PinocchioDynLibManager &) = delete;
@@ -27,11 +25,7 @@ public:
 
     PinocchioDynLibManager() = delete;
     virtual ~PinocchioDynLibManager();
-
-    explicit PinocchioDynLibManager(const std::string urdf);
-
-    // virtual pinocchio::Model &getModel();
-    // virtual pinocchio::Data &getData();
+    explicit PinocchioDynLibManager(const std::string urdf, const std::string TcpName);//禁止隐性转换
 
     // kin
     virtual void upDataModel(Eigen::Matrix<double, _Dofs, 1> &q) = 0;
@@ -62,27 +56,11 @@ PinocchioDynLibManager<_Dofs>::~PinocchioDynLibManager()
 {
 }
 template <int _Dofs>
-PinocchioDynLibManager<_Dofs>::PinocchioDynLibManager(const std::string urdf)
+PinocchioDynLibManager<_Dofs>::PinocchioDynLibManager(const std::string urdf, const std::string TcpName)
 {
-    // static pinocchio::Model model;
-    // static pinocchio::Data data;
-
     std::cout << "[robotController] pinocchino动力学库加载urdf:" << urdf << " 文件" << std::endl;
+    std::cout << "[robotController] TcpName:" << TcpName << std::endl;
     pinocchio::urdf::buildModel(urdf, this->model);
     this->data = pinocchio::Data(this->model);
-
-    // pModel = &model;
-    // pData = &data;
+    this->frameId = this->model.getFrameId(TcpName);
 }
-
-// template <int _Dofs>
-// pinocchio::Model &PinocchioDynLibManager<_Dofs>::getModel()
-// {
-//     return this->Model;
-// }
-
-// template <int _Dofs>
-// pinocchio::Data &PinocchioDynLibManager<_Dofs>::getData()
-// {
-//     return this->Data;
-// }

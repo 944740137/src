@@ -3,12 +3,11 @@
 Robot7 *pPanda = nullptr;
 PandaController *pController = nullptr;
 
-void pandaInit()
+void pandaInit(std::string &urdfPath, std::string &TcpName)
 {
     if (pPandaDynLibManager == nullptr)
     {
-        pPandaDynLibManager = new PandaDynLibManager(
-            std::string("/home/wd/workSpace/WDcontroller/ROS/src/franka_description/robots/panda/panda_withoutHand_dyn.urdf"));
+        pPandaDynLibManager = new PandaDynLibManager(urdfPath, TcpName);
     }
     if (pController == nullptr)
     {

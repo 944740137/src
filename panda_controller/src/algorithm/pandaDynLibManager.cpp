@@ -5,7 +5,7 @@ PandaDynLibManager *pPandaDynLibManager = nullptr;
 PandaDynLibManager::~PandaDynLibManager()
 {
 }
-PandaDynLibManager::PandaDynLibManager(const std::string urdf) : PinocchioDynLibManager(urdf) // 显式调用父类有参构造
+PandaDynLibManager::PandaDynLibManager(const std::string urdf, const std::string TcpName) : PinocchioDynLibManager(urdf, TcpName) // 显式调用父类有参构造
 {
 }
 
@@ -23,11 +23,10 @@ void PandaDynLibManager::computeTcpJacobian(Eigen::Matrix<double, 6, DIM> &J,
 {
     pinocchio::computeJointJacobians(this->model, this->data);
     pinocchio::computeJointJacobiansTimeVariation(this->model, this->data, q, dq);
-
-    const auto frameId = this->model.getFrameId("panda_joint8");
-    pinocchio::getFrameJacobian(this->model, this->data, frameId, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, J);
-    pinocchio::getFrameJacobianTimeVariation(this->model, this->data, frameId, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, dJ);
-
+    //J0
+    pinocchio::getFrameJacobian(this->model, this->data, this->frameId, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, J);
+    pinocchio::getFrameJacobianTimeVariation(this->model, this->data, this->frameId, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, dJ);
+    //JE
     // pinocchio::getFrameJacobian(this->model, this->data, frameId, pinocchio::ReferenceFrame::LOCAL, J_pin2);
     // pinocchio::getFrameJacobianTimeVariation(this->model, this->data, frameId, pinocchio::ReferenceFrame::LOCAL, dJ_pin2);
 }

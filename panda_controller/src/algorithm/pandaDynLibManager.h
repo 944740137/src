@@ -12,7 +12,7 @@ public:
   PandaDynLibManager() = delete;
   ~PandaDynLibManager();
 
-  explicit PandaDynLibManager(const std::string urdf);
+  explicit PandaDynLibManager(const std::string urdf, const std::string TcpName);
 
   void upDataModel(Eigen::Matrix<double, DIM, 1> &q);
   void computeTcpJacobian(Eigen::Matrix<double, 6, DIM> &J,

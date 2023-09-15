@@ -14,7 +14,7 @@ typedef ComputedTorqueMethod<DIM> PandaComputedTorqueMethodController;
 
 extern Robot7 *pPanda;
 extern PandaController *pController;
-void pandaInit();
+void pandaInit(std::string &urdfPath, std::string &TcpName);
 void pandaStart(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &theta,
                 const Eigen::Matrix<double, DIM, 1> &dq, const Eigen::Matrix<double, DIM, 1> &tau,
                 const Eigen::Vector3d &position, const Eigen::Quaterniond &orientation, const Eigen::Affine3d &TO2E, int recordPeriod);

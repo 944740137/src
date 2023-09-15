@@ -376,7 +376,7 @@ namespace robot_controller
             return;
         if (time == 1)
         {
-            this->myfile.open("/home/wd/log/franka/pandaController.txt"); // todo
+            this->myfile.open("/home/wd/log/franka/main/pandaController.txt"); // todo
             this->myfile << "pandaController"
                          << "\n";
             this->myfile << this->controllerLaw->controllerLawName << "\n";

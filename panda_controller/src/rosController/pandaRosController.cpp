@@ -14,14 +14,23 @@
 
 namespace panda_controller
 {
-
   bool PandaController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
   {
 
     std::cout << "[robotController] init1:panda_controller" << std::endl;
     std::cout << "[robotController] init2:panda_controller" << std::endl;
 
-    pandaInit();
+    std::string urdfPath;
+    std::string TcpName;
+    if (!node_handle.getParam("/panda_withoutHand_dyn", urdfPath))
+    {
+      ROS_ERROR_STREAM("panda_controller: Could not read parameter urdfPath");
+    }
+    if (!node_handle.getParam("/TCP_name", TcpName))
+    {
+      ROS_ERROR_STREAM("panda_controller: Could not read parameter TcpName");
+    }
+    pandaInit(urdfPath, TcpName);
 
     // 参数服务器
     std::string arm_id;
@@ -102,7 +111,7 @@ namespace panda_controller
 
     return true;
   }
-  
+
   void PandaController::starting(const ros::Time & /*time*/)
   {
     std::cout << "[robotController] start1:panda_controller\n";
