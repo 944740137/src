@@ -8,23 +8,40 @@
 #include "pinocchio/algorithm/crba.hpp"
 #include "pinocchio/algorithm/frames.hpp"
 
-
-class pinLibInteractive
+class PandaDynLibManager
 {
 public:
-    pinLibInteractive();
+    pinocchio::Model model;
+    pinocchio::Data data;
+    pinocchio::FrameIndex frameId;
 
 public:
-    // void myforwardKinematics(pinocchio::Model model_, pinocchio::Data data_, VectorXd q_pin_, VectorXd v_pin_, VectorXd a_pin_);
+    PandaDynLibManager(const PandaDynLibManager &) = delete;
+    void operator=(const PandaDynLibManager &) = delete;
 
-    // pinocchio::Model &getpModel();
-    // pinocchio::Data &getpData();
-    void forwardKinematics(const Eigen::Matrix<double, 7, 1> &q);
-    void updateFramePlacements();
-    void computeJointJacobians(Eigen::Matrix<double, 6, 7> &J, const Eigen::Matrix<double, 7, 1> &q);
-    void computeJointJacobiansTimeVariation(const Eigen::Matrix<double, 7, 1> &q, const Eigen::Matrix<double, 7, 1> &dq);
-    void rnea(const Eigen::Matrix<double, 7, 1> &q, const Eigen::Matrix<double, 7, 1> &dq, const Eigen::Matrix<double, 7, 1> &ddq_d);
-    void computeGeneralizedGravity(const Eigen::Matrix<double, 7, 1> &q);
-    void computeCoriolisMatrix(Eigen::Matrix<double, 7, 7> &C, const Eigen::Matrix<double, 7, 1> &q, const Eigen::Matrix<double, 7, 1> &dq);
-    void crba(const Eigen::Matrix<double, 7, 1> &q);
+    PandaDynLibManager() = delete;
+    virtual ~PandaDynLibManager();
+    explicit PandaDynLibManager(const std::string urdf, const std::string TcpName); // 禁止隐性转换
+
+    // kin
+    void upDataModel(Eigen::Matrix<double, 7, 1> &q);
+    void computeTcpJacobian(Eigen::Matrix<double, 6, 7> &J,
+                            Eigen::Matrix<double, 6, 7> &dJ,
+                            const Eigen::Matrix<double, 7, 1> &q,
+                            const Eigen::Matrix<double, 7, 1> &dq);
+    void computeKinData(Eigen::Matrix<double, 6, 7> &J,
+                        Eigen::Matrix<double, 6, 7> &dJ,
+                        const Eigen::Matrix<double, 7, 1> &q,
+                        const Eigen::Matrix<double, 7, 1> &dq);
+    // dyn
+    void computeGeneralizedGravity(Eigen::Matrix<double, 7, 1> &G, const Eigen::Matrix<double, 7, 1> &q);
+    void computeCoriolisMatrix(Eigen::Matrix<double, 7, 7> &C,
+                               const Eigen::Matrix<double, 7, 1> &q,
+                               const Eigen::Matrix<double, 7, 1> &dq);
+    void crba(Eigen::Matrix<double, 7, 7> &M, const Eigen::Matrix<double, 7, 1> &q);
+    void computeDynData(Eigen::Matrix<double, 7, 7> &M,
+                        Eigen::Matrix<double, 7, 7> &C,
+                        Eigen::Matrix<double, 7, 1> &G,
+                        const Eigen::Matrix<double, 7, 1> &q,
+                        const Eigen::Matrix<double, 7, 1> &dq);
 };

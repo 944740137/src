@@ -17,30 +17,28 @@
 #include <fstream>
 #include <iostream>
 
-extern pinLibInteractive *pinInteractive;
+extern PandaDynLibManager *pPandaDynLibManager;
 
 namespace franka_example_controllers
 {
-  long get_system_time_nanosecond()
-  {
-    struct timespec timestamp = {};
-    if (0 == clock_gettime(CLOCK_REALTIME, &timestamp))
-      return timestamp.tv_sec * 1000000000 + timestamp.tv_nsec;
-    else
-      return 0;
-  }
-  long get_system_time_microsecond()
-  {
-    struct timeval timestamp = {};
-    if (0 == gettimeofday(&timestamp, NULL))
-      return timestamp.tv_sec * 1000000 + timestamp.tv_usec;
-    else
-      return 0;
-  }
   bool NullSpaceImpedanceMBObserverController::init(hardware_interface::RobotHW *robot_hw, ros::NodeHandle &node_handle)
   {
     std::cout << "[------------------] init1:NullSpaceImpedanceMBObserverController" << std::endl;
     std::cout << "[------------------] init2:NullSpaceImpedanceMBObserverController" << std::endl;
+
+    std::string urdfPath;
+    std::string TcpName;
+    if (!node_handle.getParam("/panda_withoutHand_dyn", urdfPath))
+    {
+      ROS_ERROR_STREAM("panda_controller: Could not read parameter urdfPath");
+    }
+    if (!node_handle.getParam("/TCP_name", TcpName))
+    {
+      ROS_ERROR_STREAM("panda_controller: Could not read parameter TcpName");
+    }
+
+    if (pPandaDynLibManager == nullptr)
+      pPandaDynLibManager = new PandaDynLibManager(urdfPath, TcpName);
 
     // 参数服务器
     std::string arm_id;
@@ -119,6 +117,15 @@ namespace franka_example_controllers
 
     paramForDebug = node_handle.advertise<franka_example_controllers::paramForDebug>("paramForDebug", 20);
 
+    struct sched_param param = {5};
+    if (sched_setscheduler(getpid(), SCHED_FIFO, &param) != 0)
+    {
+      printf("-------------主进程初始化失败-------------\n");
+    };
+    sched_getparam(0, &param);
+    printf("-------------主进程初始化成功，调度策略: %d, 调度优先级: %d-------------\n",
+           sched_getscheduler(0), param.sched_priority);
+
     return true;
   }
 
@@ -145,18 +152,6 @@ namespace franka_example_controllers
       this->myfile << "编译时刻:" << __TIME__ << "\n";
       this->myfile << "动量观测器" << std::endl;
     }
-
-    if (pinInteractive == nullptr)
-      pinInteractive = new pinLibInteractive();
-
-    struct sched_param param = {5};
-    if (sched_setscheduler(getpid(), SCHED_FIFO, &param) != 0)
-    {
-      printf("-------------主进程初始化失败-------------\n");
-    };
-    sched_getparam(0, &param);
-    printf("-------------主进程初始化成功，调度策略: %d, 调度优先级: %d-------------\n",
-           sched_getscheduler(0), param.sched_priority);
   }
 
   void NullSpaceImpedanceMBObserverController::threeDOF(Eigen::Matrix<double, 6, 1> &X_d,
@@ -173,18 +168,17 @@ namespace franka_example_controllers
     // this->myfile << "tmp1: " << tmp1.transpose() << "\n";
     // this->myfile << "tmp2: " << tmp2.transpose() << "\n";
     // this->myfile << "tmpI: " << tmpI.transpose() << "\n";
+    this->myfile << "------------------" << std::endl;
 
     // 伪逆矩阵计算
     Eigen::MatrixXd J_pinv;
     Eigen::MatrixXd I = Eigen::MatrixXd::Identity(7, 7);
     weightedPseudoInverse(J, J_pinv, this->M);
 
-    this->myfile << "------------------" << std::endl;
     // Z
     this->J1 = this->J.block(0, 0, 3, 7);
     this->dJ1 = dJ.block(0, 0, 3, 7);
     this->J1_pinv = J_pinv.block(0, 0, 7, 3);
-
     this->Jm = this->J.block(0, 1, 3, 3);
     this->Ja = this->J.block(0, 0, 3, 1);
     this->Jb = this->J.block(0, 4, 3, 3);
@@ -209,7 +203,8 @@ namespace franka_example_controllers
     }
     this->dZ_inv = this->S2_dot;
 
-    bool ifPDplus = true;
+    //
+    bool ifPDplus = false;
     if (ifPDplus && time == 0)
       std::cout << "is PDplus" << std::endl;
     if (!ifPDplus && time == 0)
@@ -230,19 +225,19 @@ namespace franka_example_controllers
     }
     else
     {
-      ddxc = ddX_d.block(0, 0, 3, 1) + Kv * dXerror.block(0, 0, 3, 1) + Kp * Xerror.block(0, 0, 3, 1) - Lambdax_inv * J1_pinv.transpose() * r;
+      ddxc = ddX_d.block(0, 0, 3, 1) + Kv * dXerror.block(0, 0, 3, 1) + Kp * Xerror.block(0, 0, 3, 1) /* + Lambdax_inv * J1_pinv.transpose() * r */;
     }
 
     dvc = Lambdav.inverse() * ((uv + Bv) * (-v) + Z.transpose() * Kd * (task2_q_d - q));
     ddqc = J1_pinv * (ddxc - dJ1 * dq) + Z * (dvc - dZ_inv * dq);
 
+    // obsever
     tmp2 = tau_d + C_pin.transpose() * dq + r;
     tmpI = tmpI + 0.5 * (tmp1 + tmp2) * t.toSec();
     tmp1 = tmp2;
     r = KI * (M * dq - tmpI);
     tau_msr = -r;
     F_msr = J_pinv.transpose() * tau_msr;
-
     this->tau_d << M * ddqc + c;
 
     // 目标位置，控制参数更新
@@ -254,8 +249,6 @@ namespace franka_example_controllers
 
   void NullSpaceImpedanceMBObserverController::update(const ros::Time & /*time*/, const ros::Duration &t)
   {
-    long time1 = get_system_time_microsecond();
-
     upDateParam();
     recordData();
     double r1 = 0.1;
@@ -323,9 +316,6 @@ namespace franka_example_controllers
     {
       joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
     }
-
-    long time2 = get_system_time_microsecond();
-    // printf("time: %ld\n", time2 - time1); // 微秒
   }
 
   Eigen::Matrix<double, 7, 1> NullSpaceImpedanceMBObserverController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)
@@ -363,26 +353,41 @@ namespace franka_example_controllers
 
     this->comRatio = robot_state.control_command_success_rate;
     //
-    pinInteractive->forwardKinematics(this->q);
-    pinInteractive->updateFramePlacements();
-
-    // pinInteractive->computeJointJacobians(this->J_pin1, this->q);
-    // pinInteractive->computeJointJacobians(this->J_pin1, this->q);
-    // pinInteractive->computeJointJacobians(this->J_pin1, this->q);
-    pinInteractive->computeCoriolisMatrix(this->C_pin, this->q, this->dq);
+    pPandaDynLibManager->upDataModel(this->q);
+    pPandaDynLibManager->computeKinData(this->J_pin, this->dJ_pin, this->q, this->dq);
+    pPandaDynLibManager->computeDynData(this->M_pin, this->C_pin, this->G_pin, this->q, this->dq);
   }
 
   void NullSpaceImpedanceMBObserverController::recordData()
   {
     this->myfile << "time: " << this->time << "_\n";
     this->myfile << "comRatio: " << this->comRatio << "_\n";
-    // this->myfile << this->J << "\n";
-    // this->myfile << "J: \n";
+    // this->myfile << "J_pin1: \n";
     // this->myfile << this->J_pin1 << "\n";
     // this->myfile << "tau_msr: " << this->tau_msr.transpose() << "\n";
     // this->myfile << "r: " << this->r.transpose() << "\n";
     // this->myfile << "ddxc: " << this->ddxc.transpose() << "\n";
     // this->myfile << "dvc: " << this->dvc.transpose() << "\n";
+    // this->myfile << "J: \n";
+    // this->myfile << this->J << "\n";
+    // this->myfile << "J_pin: \n";
+    // this->myfile << this->J_pin << "\n";
+    // this->myfile << "dJ: \n";
+    // this->myfile << this->dJ << "\n";
+    // this->myfile << "dJ_pin: \n";
+    // this->myfile << this->dJ_pin << "\n";
+    // this->myfile << "M: \n";
+    // this->myfile << this->M << "\n";
+    // this->myfile << "M_pin: \n";
+    // this->myfile << this->M_pin << "\n";
+    // this->myfile << "c: \n";
+    // this->myfile << this->c.transpose() << "\n";
+    // this->myfile << "c_pin*dq: \n";
+    // this->myfile << (this->C_pin * this->dq).transpose() << "\n";
+    // this->myfile << "G: \n";
+    // this->myfile << this->G.transpose() << "\n";
+    // this->myfile << "G_pin: \n";
+    // this->myfile << this->G_pin.transpose() << "\n";
   }
 
   void NullSpaceImpedanceMBObserverController::complianceParamCallback(franka_example_controllers::nullspace_impedance_controller_paramConfig &config, uint32_t /*level*/)

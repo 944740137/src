@@ -100,6 +100,7 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> G = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 6, 7> J = Eigen::MatrixXd::Zero(6, 7);
 
+    Eigen::Matrix<double, 6, 7> J_pin = Eigen::MatrixXd::Zero(6, 7);
     Eigen::Matrix<double, 7, 7> M_pin = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> C_pin = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 1> G_pin = Eigen::MatrixXd::Zero(7, 1);
@@ -107,6 +108,7 @@ namespace franka_example_controllers
 
     // 计算雅克比
     Eigen::Matrix<double, 6, 7> dJ = Eigen::MatrixXd::Zero(6, 7); // 未滤波
+    Eigen::Matrix<double, 6, 7> dJ_pin = Eigen::MatrixXd::Zero(6, 7); // 未滤波
     Eigen::Matrix<double, 6, 7> J_old = Eigen::MatrixXd::Zero(6, 7);
     Eigen::Matrix<double, 6, 7> S1 = Eigen::MatrixXd::Zero(6, 7);
     Eigen::Matrix<double, 6, 7> S1_dot = Eigen::MatrixXd::Zero(6, 7);

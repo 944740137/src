@@ -14,7 +14,6 @@
 
 #include <franka_example_controllers/pseudo_inversion.h>
 
-extern pinLibInteractive *pinInteractive;
 
 namespace franka_example_controllers
 {
@@ -127,8 +126,6 @@ namespace franka_example_controllers
     this->myfile << "编译日期:" << __DATE__ << "\n";
     this->myfile << "编译时刻:" << __TIME__ << "\n";
     this->myfile << "误差观测器" << std::endl;
-    if (pinInteractive == nullptr)
-      pinInteractive = new pinLibInteractive();
   }
 
   void NullSpaceImpedanceEBObserverController::update(const ros::Time & /*time*/, const ros::Duration &t)
@@ -214,7 +211,7 @@ namespace franka_example_controllers
     uv = (Z.transpose() * C_pin - Lambdav * dZ_inv) * Z;
     v = Z_inv * dq;
 
-   if (ifPDplus)
+    if (ifPDplus)
       ddxc = ddX_d.block(0, 0, 3, 1) + Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) + J1_pinv.transpose() * tau_msr);
     else
       ddxc = ddX_d.block(0, 0, 3, 1) + P * dXerror.block(0, 0, 3, 1) + Lambdax_inv * ((ux + K) * s + J1_pinv.transpose() * tau_msr);
@@ -283,11 +280,11 @@ namespace franka_example_controllers
     this->X << Eigen::Vector3d(this->T.translation()), Eigen::Quaterniond(this->T.rotation()).toRotationMatrix().eulerAngles(2, 1, 0);
     this->dX = this->J * this->dq;
 
-    pinInteractive->forwardKinematics(this->q);
-    pinInteractive->updateFramePlacements();
+    // pinInteractive->forwardKinematics(this->q);
+    // pinInteractive->updateFramePlacements();
 
     // pinInteractive->computeJointJacobians(this->J_pin, this->q);
-    pinInteractive->computeCoriolisMatrix(this->C_pin, this->q, this->dq);
+    // pinInteractive->computeCoriolisMatrix(this->C_pin, this->q, this->dq);
   }
 
   void NullSpaceImpedanceEBObserverController::recordData()

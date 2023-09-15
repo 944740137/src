@@ -1,0 +1,7 @@
+<launch>
+   
+    <param name="panda_withoutHand_dyn"    value="$(find franka_description)/robots/panda/panda_withoutHand_dyn.urdf" />
+    <param name="panda_withoutHand_kin"    value="$(find franka_description)/robots/panda/panda_withoutHand_kin.urdf" />
+    <param name="TCP_name"    value="panda_joint8" />
+
+</launch>

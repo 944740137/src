@@ -31,7 +31,8 @@
                 -J $(arg arm_id)_finger_joint2 0.001"
        />
   <arg name="interactive_marker" default="$(eval arg('controller') == 'cartesian_impedance_example_controller')" doc="Should the interactive marker node be started?" />
-
+ 
+  <include file="$(find franka_example_controllers)/launch/importURDF.launch"/>
   <include file="$(find franka_gazebo)/launch/robot.launch">
     <arg name="gazebo" value="$(arg gazebo)" />
     <arg name="headless" value="$(arg headless)" />
