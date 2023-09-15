@@ -423,6 +423,7 @@ bool newControllerLaw(std::unique_ptr<ControllerLaw<_Dofs>> &controllerLaw, Cont
         controllerLaw = std::make_unique<PD<_Dofs>>(taskSpace);
         break;
     default:
+        controllerLaw = std::make_unique<ComputedTorqueMethod<_Dofs>>(TaskSpace::jointSpace);
         return false;
         break;
     }

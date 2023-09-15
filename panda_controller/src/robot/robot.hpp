@@ -295,7 +295,7 @@ namespace my_robot
         pPandaDynLibManager->computeJointJacobiansTimeVariation(*model, *data, q, dq);
         this->dJ = data->dJ;
 
-        pPandaDynLibManager->rnea(*model, *data, this->q, this->dq, ddq_d);
+        // pPandaDynLibManager->rnea(*model, *data, this->q, this->dq, ddq_d);
         pPandaDynLibManager->computeGeneralizedGravity(*model, *data, this->q);
         this->G = data->g;
         pPandaDynLibManager->computeCoriolisMatrix(*model, *data, this->q, this->dq);

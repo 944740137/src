@@ -118,6 +118,7 @@ namespace robot_controller
         void pubData(pubDataType &param_debug, my_robot::Robot<_Dofs> *robot);
     };
 
+    // default
     template <int _Dofs, typename pubDataType>
     Controller<_Dofs, pubDataType>::~Controller()
     {
@@ -403,12 +404,12 @@ namespace robot_controller
         // this->myfile << "T:" << n;
         // this->myfile << robot->getT().matrix() << "\n";
 
-        // this->myfile << "M:" << n;
-        // this->myfile << robot->getM() << "\n";
-        // this->myfile << "C: " << n;
-        // this->myfile << robot->getC() * robot->getdq() << "\n";
-        // this->myfile << "G: " << n;
-        // this->myfile << robot->getG() << n;
+        this->myfile << "M:" << n;
+        this->myfile << robot->getM() << "\n";
+        this->myfile << "C: " << n;
+        this->myfile << robot->getC() * robot->getdq() << "\n";
+        this->myfile << "G: " << n;
+        this->myfile << robot->getG() << n;
         // this->myfile << "J: " << n;
         // this->myfile << robot->getJ() << "\n";
 

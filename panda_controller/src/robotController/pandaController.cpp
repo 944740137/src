@@ -61,7 +61,7 @@ void pandaRun(const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double
 
     // 本层控制器保存运行数据
     pController->recordData(pPanda);
-    // 本层控制器发布运行数据
+    // 本层控制器发布运行数据(ROS)
     pController->pubData(param_debug, pPanda);
 }
 
