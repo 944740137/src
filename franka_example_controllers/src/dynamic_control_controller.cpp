@@ -19,6 +19,7 @@ const char C_Time[9] = __TIME__;
 
 long get_system_time_nanosecond();  // 纳秒
 long get_system_time_microsecond(); // 微秒
+
 long get_system_time_nanosecond()
 {
   struct timespec timestamp = {};
