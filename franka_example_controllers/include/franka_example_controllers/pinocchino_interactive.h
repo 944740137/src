@@ -13,7 +13,7 @@ class PandaDynLibManager
 public:
     pinocchio::Model model;
     pinocchio::Data data;
-    pinocchio::FrameIndex frameId;
+    pinocchio::FrameIndex frameId; // 末端
 
 public:
     PandaDynLibManager(const PandaDynLibManager &) = delete;
