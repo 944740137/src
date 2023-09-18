@@ -1,7 +1,0 @@
-<library path="lib/libpanda_controller">
-      <class name="panda_controller/PandaController" type="panda_controller::PandaController" base_class_type="controller_interface::ControllerBase">
-    <description>
-          panda_controller 主控制器
-    </description>
-  </class>
-</library>

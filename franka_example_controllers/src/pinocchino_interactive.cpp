@@ -1,34 +1,72 @@
-#include <algorithm/pinocchino_interactive.h>
+#include <franka_example_controllers/pinocchino_interactive.h>
 
-pinLibInteractive *pinInteractive = nullptr;
-pinLibInteractive::pinLibInteractive()
+//
+PandaDynLibManager *pPandaDynLibManager = nullptr;
+
+PandaDynLibManager::~PandaDynLibManager()
 {
-    static pinocchio::Model model;
-    static pinocchio::Data data;
-    std::string urdf = std::string("/home/wd/franka_ros/3_workspace/src/franka_description/robots/panda/panda_withHand.urdf");
-    std::cout << "------------------" << urdf << "------------------" << std::endl;
-    pinocchio::urdf::buildModel(urdf, model);
-    pModel = &model;
-    data = pinocchio::Data(model);
-    pData = &data;
 }
-pinocchio::Model &pinLibInteractive::getpModel()
+PandaDynLibManager::PandaDynLibManager(const std::string urdf, const std::string TcpName)
 {
-    return *pModel;
+    std::cout << "[robotController] pinocchino动力学库加载urdf:" << urdf << std::endl;
+    std::cout << "[robotController] TcpName:" << TcpName << std::endl;
+    pinocchio::urdf::buildModel(urdf, this->model);
+    this->data = pinocchio::Data(this->model);
+    this->frameId = this->model.getFrameId(TcpName);
 }
-pinocchio::Data &pinLibInteractive::getpData()
+void PandaDynLibManager::upDataModel(Eigen::Matrix<double, 7, 1> &q)
 {
-    return *pData;
+    pinocchio::forwardKinematics(this->model, this->data, q);
+    pinocchio::updateFramePlacements(this->model, this->data);
 }
-// void pinLibInteractive::myforwardKinematics(pinocchio::Model model_, pinocchio::Data data_, VectorXd q_pin_, VectorXd v_pin_, VectorXd a_pin_)
-// {
-//     pinocchio::forwardKinematics(model_, data_, q_pin_, v_pin_, a_pin_);
-// }
-// void tmp()
-// {
-//     pinInteractive = new pinLibInteractive();
-//     pinocchio::Data *data = pinInteractive->getpData();
-//     pinocchio::Model *model = pinInteractive->getpModel();
-//     Eigen::VectorXd q_pin(model->nq), v_pin(model->nv), a_pin(model->nv), tau_pin(model->nq);
-//     pinocchio::forwardKinematics(*model, *data, q_pin, v_pin, a_pin);
-// }
+
+// kin
+void PandaDynLibManager::computeTcpJacobian(Eigen::Matrix<double, 6, 7> &J,
+                                            Eigen::Matrix<double, 6, 7> &dJ,
+                                            const Eigen::Matrix<double, 7, 1> &q,
+                                            const Eigen::Matrix<double, 7, 1> &dq)
+{
+    pinocchio::computeJointJacobians(this->model, this->data);
+    pinocchio::computeJointJacobiansTimeVariation(this->model, this->data, q, dq);
+    // J0
+    pinocchio::getFrameJacobian(this->model, this->data, this->frameId, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, J);
+    pinocchio::getFrameJacobianTimeVariation(this->model, this->data, this->frameId, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, dJ);
+    // JE
+    //  pinocchio::getFrameJacobian(this->model, this->data, frameId, pinocchio::ReferenceFrame::LOCAL, J_pin2);
+    //  pinocchio::getFrameJacobianTimeVariation(this->model, this->data, frameId, pinocchio::ReferenceFrame::LOCAL, dJ_pin2);
+}
+void PandaDynLibManager::computeKinData(Eigen::Matrix<double, 6, 7> &J,
+                                        Eigen::Matrix<double, 6, 7> &dJ,
+                                        const Eigen::Matrix<double, 7, 1> &q,
+                                        const Eigen::Matrix<double, 7, 1> &dq)
+{
+    this->computeTcpJacobian(J, dJ, q, dq);
+}
+
+// dyn
+void PandaDynLibManager::computeGeneralizedGravity(Eigen::Matrix<double, 7, 1> &G, const Eigen::Matrix<double, 7, 1> &q)
+{
+    G = pinocchio::computeGeneralizedGravity(this->model, this->data, q);
+}
+void PandaDynLibManager::computeCoriolisMatrix(Eigen::Matrix<double, 7, 7> &C,
+                                               const Eigen::Matrix<double, 7, 1> &q,
+                                               const Eigen::Matrix<double, 7, 1> &dq)
+{
+    C = pinocchio::computeCoriolisMatrix(this->model, this->data, q, dq);
+}
+void PandaDynLibManager::crba(Eigen::Matrix<double, 7, 7> &M, const Eigen::Matrix<double, 7, 1> &q)
+{
+    pinocchio::crba(this->model, this->data, q);
+    this->data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
+    M = this->data.M;
+}
+void PandaDynLibManager::computeDynData(Eigen::Matrix<double, 7, 7> &M,
+                                        Eigen::Matrix<double, 7, 7> &C,
+                                        Eigen::Matrix<double, 7, 1> &G,
+                                        const Eigen::Matrix<double, 7, 1> &q,
+                                        const Eigen::Matrix<double, 7, 1> &dq)
+{
+    computeGeneralizedGravity(G, q);
+    computeCoriolisMatrix(C, q, dq);
+    crba(M, q);
+}

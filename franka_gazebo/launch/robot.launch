@@ -11,7 +11,7 @@
   <!-- Robot Customization -->
   <arg name="robot"                       doc="Which robot to spawn (one of {panda,fr3})" />
   <arg name="arm_id"      default="$(arg robot)" doc="Name of the robot to spawn" />
-  <arg name="use_gripper" default="false"  doc="Should a franka hand be mounted on the flange?" />
+  <arg name="use_gripper" default="true"  doc="Should a franka hand be mounted on the flange?" />
   <arg name="controller"  default=" "     doc="Which example controller should be started? (One of {cartesian_impedance,model,force,joint_position,joint_velocity}_example_controller)" />
   <arg name="x"           default="0"     doc="How far forward to place the base of the robot in [m]?" />
   <arg name="y"           default="0"     doc="How far leftwards to place the base of the robot in [m]?" />
@@ -98,5 +98,5 @@
   </node>
 
   <node pkg="rviz" type="rviz" output="screen" name="rviz" args="-f $(arg arm_id)_link0 -d $(find franka_example_controllers)/launch/rviz/franka_description_with_marker.rviz --splash-screen $(find franka_visualization)/splash.png" if="$(arg rviz)"/>
-  
+
 </launch>
