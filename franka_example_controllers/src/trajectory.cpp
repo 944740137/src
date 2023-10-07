@@ -47,7 +47,6 @@ void cartesianTrajectory0(double nowTime, double posRatio, double velRatio, cons
 
     // 期望位置赋值
 
-
     // 期望姿态函数
     Eigen::Quaterniond orientation0(T0.rotation());
     Eigen::Quaterniond orientation(T.rotation());
@@ -85,8 +84,8 @@ void JointCosTrajectory(Eigen::Matrix<double, DIM, 1> &selectAxis, double nowTim
         ddDeltaAngle[i] = selectAxis[i] * maxPos * (maxVel * velRatio) * (maxVel * velRatio) * (std::cos((maxVel * velRatio) * nowTime)) * posRatio;
     }
     q_d = q0 + deltaAngle;
-    dq_d = q0 + dDeltaAngle;
-    ddq_d = q0 + ddDeltaAngle;
+    dq_d = dDeltaAngle;
+    ddq_d = ddDeltaAngle;
 
     qerror = q_d - q;
     dqerror = dq_d - dq;

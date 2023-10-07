@@ -40,7 +40,10 @@ void PandaDynLibManager::computeKinData(Eigen::Matrix<double, 6, 7> &J,
                                         const Eigen::Matrix<double, 7, 1> &q,
                                         const Eigen::Matrix<double, 7, 1> &dq)
 {
+    // Jacobian
     this->computeTcpJacobian(J, dJ, q, dq);
+    // hassian
+    // --
 }
 
 // dyn

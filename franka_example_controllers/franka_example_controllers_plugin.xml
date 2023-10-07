@@ -14,4 +14,9 @@
           NullSpaceImpedanceMBObserverController 位置姿态控制，零空间阻抗，基于动量(momentum based)的观测器
     </description>
   </class>
+    <class name="franka_example_controllers/RobustController" type="franka_example_controllers::RobustController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          RobustController 鲁棒控制
+    </description>
+  </class>
 </library>

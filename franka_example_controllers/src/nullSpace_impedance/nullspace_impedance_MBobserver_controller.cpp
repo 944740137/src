@@ -146,7 +146,7 @@ namespace franka_example_controllers
     this->task2_q_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
     if (!this->myfile.is_open())
     {
-      this->myfile.open("/home/wd/log/franka/nullSpace/NullSpaceImpedanceMBObserverController.txt");
+      this->myfile.open("/home/wd/log/franka/master/NullSpaceImpedanceMBObserverController.txt");
       this->myfile << "NullSpaceImpedanceMBObserverController" << std::endl;
       this->myfile << "编译日期:" << __DATE__ << "\n";
       this->myfile << "编译时刻:" << __TIME__ << "\n";

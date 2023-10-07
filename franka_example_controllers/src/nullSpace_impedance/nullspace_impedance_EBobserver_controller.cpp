@@ -121,7 +121,7 @@ namespace franka_example_controllers
 
     this->task2_q_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
 
-    this->myfile.open("/home/wd/log/franka/nullSpace/NullSpaceImpedanceEBObserverController.txt");
+    this->myfile.open("/home/wd/log/franka/master/NullSpaceImpedanceEBObserverController.txt");
     this->myfile << "NullSpaceImpedanceEBObserverController" << std::endl;
     this->myfile << "编译日期:" << __DATE__ << "\n";
     this->myfile << "编译时刻:" << __TIME__ << "\n";
@@ -150,10 +150,10 @@ namespace franka_example_controllers
 
     // 轨迹和误差  3轨迹最差
     static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
-    // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
     // cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
     // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
 
     // 伪逆矩阵计算
     Eigen::MatrixXd J_pinv;
@@ -212,9 +212,9 @@ namespace franka_example_controllers
     v = Z_inv * dq;
 
     if (ifPDplus)
-      ddxc = ddX_d.block(0, 0, 3, 1) + Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) + J1_pinv.transpose() * tau_msr);
+      ddxc = ddX_d.block(0, 0, 3, 1) + Lambdax_inv * ((ux + PD_D) * dXerror.block(0, 0, 3, 1) + PD_K * Xerror.block(0, 0, 3, 1) /* + J1_pinv.transpose() * tau_msr */);
     else
-      ddxc = ddX_d.block(0, 0, 3, 1) + P * dXerror.block(0, 0, 3, 1) + Lambdax_inv * ((ux + K) * s + J1_pinv.transpose() * tau_msr);
+      ddxc = ddX_d.block(0, 0, 3, 1) + P * dXerror.block(0, 0, 3, 1) + Lambdax_inv * ((ux + K) * s /* + J1_pinv.transpose() * tau_msr */);
 
     dvc = Lambdav.inverse() * ((uv + Bv) * (-v) + Z.transpose() * Kd * (task2_q_d - q));
     ddqc = J1_pinv * (ddxc - dJ1 * dq) + Z * (dvc - dZ_inv * dq);

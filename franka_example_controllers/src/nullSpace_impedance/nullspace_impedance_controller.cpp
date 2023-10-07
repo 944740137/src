@@ -120,7 +120,7 @@ namespace franka_example_controllers
     this->task2_dq_d.setZero();
     this->task2_ddq_d.setZero();
 
-    this->myfile.open("/home/wd/log/franka/nullSpace/NullSpaceImpedanceController.txt");
+    this->myfile.open("/home/wd/log/franka/master/NullSpaceImpedanceController.txt");
     this->myfile << "NullSpaceImpedanceController" << std::endl;
   }
 
