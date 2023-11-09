@@ -32,3 +32,7 @@ float64[7] dtau_msr
 float64[6] F_msr
 float64[6] F_ext0
 float64[6] F_extK
+
+#新阻抗
+float64[7] tmp1
+float64[6] tmp2

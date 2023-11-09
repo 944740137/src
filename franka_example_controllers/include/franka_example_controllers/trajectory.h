@@ -16,7 +16,11 @@ void JointCosTrajectory(Eigen::Matrix<double, DIM, 1> &selectAxis, double nowTim
                         const Eigen::Matrix<double, DIM, 1> &q0, const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &dq,
                         Eigen::Matrix<double, DIM, 1> &q_d, Eigen::Matrix<double, DIM, 1> &dq_d, Eigen::Matrix<double, DIM, 1> &ddq_d,
                         Eigen::Matrix<double, DIM, 1> &qerror, Eigen::Matrix<double, DIM, 1> &dqerror);
-
+void Joint0Trajectory(Eigen::Matrix<double, DIM, 1> &selectAxis, double nowTime, double posRatio, double velRatio,
+                        const Eigen::Matrix<double, DIM, 1> &q0, const Eigen::Matrix<double, DIM, 1> &q, const Eigen::Matrix<double, DIM, 1> &dq,
+                        Eigen::Matrix<double, DIM, 1> &q_d, Eigen::Matrix<double, DIM, 1> &dq_d, Eigen::Matrix<double, DIM, 1> &ddq_d,
+                        Eigen::Matrix<double, DIM, 1> &qerror, Eigen::Matrix<double, DIM, 1> &dqerror);
+                        
 void cartesianTrajectory0(double nowTime, double posRatio, double velRatio, const Eigen::Affine3d &T, const Eigen::Affine3d &T0,
                           const Eigen::Matrix<double, 6, 1> &X0, const Eigen::Matrix<double, 6, 1> &X, const Eigen::Matrix<double, 6, 1> &dX,
                           Eigen::Matrix<double, 6, 1> &X_d, Eigen::Matrix<double, 6, 1> &dX_d, Eigen::Matrix<double, 6, 1> &ddX_d,

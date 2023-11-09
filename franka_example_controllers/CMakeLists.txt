@@ -49,6 +49,7 @@ generate_messages()
 #动态参数生成器,调用动态参数生成
 generate_dynamic_reconfigure_options(
   cfg/nullspace_impedance_controller.cfg
+  cfg/impedance_controller.cfg
   cfg/robust_controller.cfg
 )
 
@@ -82,6 +83,8 @@ add_library(franka_example_controllers
   src/nullSpace_impedance/nullspace_impedance_EBobserver_controller.cpp
   src/nullSpace_impedance/nullspace_impedance_MBobserver_controller.cpp
   src/robust_controller/robust_controller.cpp
+  src/impedance_controller/joint_impedance_controller.cpp
+  src/impedance_controller/cartesian_impedance_controller.cpp
   src/trajectory.cpp
   src/pinocchino_interactive.cpp
 )
