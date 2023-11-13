@@ -69,7 +69,29 @@ void PandaDynLibManager::computeDynData(Eigen::Matrix<double, 7, 7> &M,
                                         const Eigen::Matrix<double, 7, 1> &q,
                                         const Eigen::Matrix<double, 7, 1> &dq)
 {
-    computeGeneralizedGravity(G, q);
-    computeCoriolisMatrix(C, q, dq);
-    crba(M, q);
+    this->computeGeneralizedGravity(G, q);
+    this->computeCoriolisMatrix(C, q, dq);
+    this->crba(M, q);
+}
+
+void PandaDynLibManager::recordDebugData(std::ofstream &file)
+{
+    Eigen::VectorXd myq = pinocchio::randomConfiguration(this->model);
+    Eigen::VectorXd myv = Eigen::VectorXd::Random(this->model.nv);
+    Eigen::VectorXd mya = Eigen::VectorXd::Random(this->model.nv);
+    pinocchio::computeJointTorqueRegressor(this->model, this->data, myq, myv, mya);
+    file << "jointTorqueRegressor" << std::endl;
+    file << "rows " << this->data.jointTorqueRegressor.rows() << std::endl;
+    file << "cols " << this->data.jointTorqueRegressor.cols() << std::endl;
+
+    pinocchio::computeStaticRegressor(this->model, this->data, myq);
+    file << "computeStaticRegressor" << std::endl;
+    file << "rows " << this->data.staticRegressor.rows() << std::endl;
+    file << "cols " << this->data.staticRegressor.cols() << std::endl;
+    for (int i = 0; i < 7; i++)
+    {
+        // file << "interias[" << i + 1 << "]" << std::endl;
+        // file << "interias[" << i + 1 << "]" << std::endl;
+        // file << this->model.inertias[i].toDynamicParameters().transpose() << std::endl;
+    }
 }

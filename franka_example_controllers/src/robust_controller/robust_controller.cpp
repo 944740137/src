@@ -18,6 +18,7 @@
 #include <iostream>
 
 extern PandaDynLibManager *pPandaDynLibManager;
+extern void recordDebugData(std::ofstream &file);
 
 namespace franka_example_controllers
 {
@@ -210,9 +211,9 @@ namespace franka_example_controllers
     // cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
 
     // con
-    // this->tau_d = this->M * (ddq_d - u) + this->C_pin * this->dq; // ------------------------------- CV:传感器速度，无鲁棒
-    // if (time == 1)
-    //   std::cout << "传感器获取速度，无鲁棒" << std::endl;
+    this->tau_d = this->M * (ddq_d - u) + this->C_pin * this->dq; // ------------------------------- CV:传感器速度，无鲁棒
+    if (time == 1)
+      std::cout << "传感器获取速度，无鲁棒" << std::endl;
 
     // this->tau_d = this->M * (ddq_d - u + u_psi) + this->C_pin * this->dq; // ------------------------------- CM:传感器速度，有鲁棒
     // if (time == 1)
@@ -226,9 +227,9 @@ namespace franka_example_controllers
     // if (time == 1)
     //   std::cout << "观测器获取速度，无鲁棒项" << std::endl;
 
-    this->tau_d = this->M * (ddq_d - u_ob + u_psi) + this->C_pin_observe * this->dq_observe; // ---- PM:观测器速度,有鲁棒
-    if (time == 1)
-      std::cout << "观测器获取速度,有鲁棒项" << std::endl;
+    // this->tau_d = this->M * (ddq_d - u_ob + u_psi) + this->C_pin_observe * this->dq_observe; // ---- PM:观测器速度,有鲁棒
+    // if (time == 1)
+    //   std::cout << "观测器获取速度,有鲁棒项" << std::endl;
 
     // 画图
     for (int i = 0; i < 7; i++)
@@ -343,19 +344,20 @@ namespace franka_example_controllers
     //
     pPandaDynLibManager->upDataModel(this->q);
     pPandaDynLibManager->computeKinData(this->J_pin, this->dJ_pin, this->q, this->dq);
-    pPandaDynLibManager->computeKinData(this->J_pin, this->dJ_pin_filter, this->q, this->dq_filter);
-    pPandaDynLibManager->computeKinData(this->J_pin, this->dJ_pin_observe, this->q, this->dq_observe);
+    // pPandaDynLibManager->computeKinData(this->J_pin, this->dJ_pin_filter, this->q, this->dq_filter);
+    // pPandaDynLibManager->computeKinData(this->J_pin, this->dJ_pin_observe, this->q, this->dq_observe);
 
     pPandaDynLibManager->computeDynData(this->M_pin, this->C_pin, this->G_pin, this->q, this->dq);
-    pPandaDynLibManager->computeDynData(this->M_pin, this->C_pin_filter, this->G_pin, this->q, this->dq_filter);
-    pPandaDynLibManager->computeDynData(this->M_pin, this->C_pin_observe, this->G_pin, this->q, this->dq_observe);
+    // pPandaDynLibManager->computeDynData(this->M_pin, this->C_pin_filter, this->G_pin, this->q, this->dq_filter);
+    // pPandaDynLibManager->computeDynData(this->M_pin, this->C_pin_observe, this->G_pin, this->q, this->dq_observe);
   }
 
   void RobustController::recordData()
   {
-    // this->myfile << "time: " << this->time << "_\n";
-    if (this->time == 5)
+    this->myfile << "time: " << this->time << "_\n";
+    if (this->time == 1)
       return;
+    pPandaDynLibManager->recordDebugData(this->myfile);
     // this->myfile << "J_pin1: \n";
     // this->myfile << this->J_pin1 << "\n";
     // this->myfile << "tau_msr: " << this->tau_msr.transpose() << "\n";

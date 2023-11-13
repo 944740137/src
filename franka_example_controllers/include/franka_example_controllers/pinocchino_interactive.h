@@ -7,7 +7,7 @@
 #include "pinocchio/algorithm/rnea.hpp"
 #include "pinocchio/algorithm/crba.hpp"
 #include "pinocchio/algorithm/frames.hpp"
-
+#include "pinocchio/algorithm/regressor.hpp"
 class PandaDynLibManager
 {
 public:
@@ -44,4 +44,7 @@ public:
                         Eigen::Matrix<double, 7, 1> &G,
                         const Eigen::Matrix<double, 7, 1> &q,
                         const Eigen::Matrix<double, 7, 1> &dq);
+    
+    //debug
+    void recordDebugData(std::ofstream &file);
 };
