@@ -142,7 +142,7 @@ namespace franka_example_controllers
     this->T0 = Eigen::Affine3d(Eigen::Matrix4d::Map(initial_state.O_T_EE.data())); // 齐次变换矩阵
     this->q0 = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
     this->X0 << Eigen::Vector3d(this->T0.translation()), Eigen::Quaterniond(this->T0.rotation()).toRotationMatrix().eulerAngles(2, 1, 0);
-
+    ROS_INFO("X0 %f  %f  %f  %f  %f  %f", X0[0], X0[1], X0[2], X0[3], X0[4], X0[5]);
     this->task2_q_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
     if (!this->myfile.is_open())
     {
@@ -152,12 +152,12 @@ namespace franka_example_controllers
       this->myfile << "编译时刻:" << __TIME__ << "\n";
       this->myfile << "笛卡尔阻抗" << std::endl;
     }
-    task2_K = 20 * task2_K;
+    task2_K = 5 * task2_K;
   }
-  Eigen::Matrix<double, 6, 1> sgn2(Eigen::Matrix<double, 6, 1> s)
+  Eigen::Matrix<double, 3, 1> sgn2(Eigen::Matrix<double, 3, 1> s)
   {
     double detla = 1;
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 3; i++)
     {
       s[i] = s[i] / (std::fabs(s[i]) + detla);
     }
@@ -182,10 +182,10 @@ namespace franka_example_controllers
 
     // 轨迹和误差  3轨迹最差
     static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
-    cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
     // cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
     // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectory0(time / 1000, 0.8, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    cartesianTrajectory0(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
 
     // 伪逆矩阵计算
     static Eigen::MatrixXd J_pinv;
@@ -193,28 +193,50 @@ namespace franka_example_controllers
     weightedPseudoInverse(J, J_pinv, this->M);
     Eigen::MatrixXd N = I - J_pinv * J;
     // 命令加速度与输入力矩
-    static Eigen::Matrix<double, 6, 1> tmp1;
-    for (int i = 0; i < 6; i++)
-    {
-      tmp1[i] = dXerror[i] * std::fabs(dXerror[i]);
-    }
 
-    this->xc1 = ddX_d + r * sgn2(Xerror + (tmp1) / (2 * r));
-    this->qc2 = N * this->task2_K * (task2_q_d - this->q);
-    this->tau_d << this->M * (J_pinv * (this->xc1 - this->dJ * this->dq) + this->qc2) + this->c;
-    if (this->time == 0)
-      std::cout << "新阻抗" << std::endl;
+    // static Eigen::Matrix<double, 3, 1> tmp1;
+    // for (int i = 0; i < 3; i++)
+    // {
+    //   tmp1[i] = dXerror[i] * std::fabs(dXerror[i]);
+    // }
+    // this->xc1 = ddX_d.block(0, 0, 3, 1) + r * sgn2(Xerror.block(0, 0, 3, 1) + (tmp1) / (2 * r));
+    // this->qc = N * this->task2_K * (task2_q_d - this->q);
+    // this->tau_d << this->M * (J_pinv.block(0, 0, 7, 3) * (this->xc1 - this->dJ.block(0, 0, 3, 7) * this->dq) + this->qc) + this->c;
+    // if (this->time == 0)
+    //   std::cout << "新阻抗" << std::endl;
 
-    // this->xc1 = ddX_d + this->Md.inverse() * (this->Kd * Xerror + this->Dd * dXerror);
-    // this->qc2 = N * this->task2_K * (task2_q_d - this->q);
-    // this->tau_d << this->M * (J_pinv * (this->xc1 - this->dJ * this->dq) + this->qc2) + this->c;
+    // this->xc1 = ddX_d.block(0, 0, 3, 1) + this->Md.inverse() * (this->Kd * Xerror.block(0, 0, 3, 1) + this->Dd * dXerror.block(0, 0, 3, 1));
+    // this->qc = N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq);
+    // this->tau_d << this->M * (J_pinv.block(0, 0, 7, 3) * (this->xc1 - this->dJ.block(0, 0, 3, 7) * this->dq) + this->qc) + this->c;
     // if (this->time == 0)
     //   std::cout << "老阻抗" << std::endl;
+
+    static Eigen::Matrix<double, 3, 3> Kv = Eigen::MatrixXd::Zero(6, 6);
+    static Eigen::Matrix<double, 3, 1> fen_mu = Eigen::MatrixXd::Zero(6, 1);
+    static double rd[3] = {0.5, 0.5, 0.5};
+    static double bar[3] = {0.4, 0.4, 0.4};
+    for (int i = 0; i < 3; i++)
+    {
+      if (i != 0)
+        break;
+      fen_mu[i] = (bar[i] * bar[i] - Xerror[i] * Xerror[i]);
+      Kv(i, i) = rd[i] / fen_mu[i];
+    }
+    this->xc1 = ddX_d.block(0, 0, 3, 1) + this->Md.inverse() * ((this->Kd + Kv) * Xerror.block(0, 0, 3, 1) + this->Dd * dXerror.block(0, 0, 3, 1));
+    this->qc = N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq);
+    this->tau_d << this->M * (J_pinv.block(0, 0, 7, 3) * (this->xc1 - this->dJ.block(0, 0, 3, 7) * this->dq) + this->qc) + this->c;
+    if (this->time == 0)
+      std::cout << "变阻抗" << std::endl;
 
     // 记录数据
     this->time++;
     recordData();
-    this->myfile << " " << std::endl; // 刷新缓冲区
+    // this->myfile << "tau_d:" << this->tau_d.transpose() << "\n";
+    // this->myfile << "xc1:" << this->xc1.transpose() << "\n";
+    // this->myfile << "Xerror:" << Xerror.transpose() << "\n";
+    // this->myfile << "dXerror:" << dXerror.transpose() << "\n";
+    // this->myfile << "ddX_d:" << ddX_d.transpose() << "\n";
+    // this->myfile << " " << std::endl; // 刷新缓冲区
 
     // 画图
     for (int i = 0; i < 7; i++)
@@ -228,9 +250,12 @@ namespace franka_example_controllers
       this->param_debug.dX_d[i] = dX_d[i];
       this->param_debug.Xerror[i] = Xerror[i];
       this->param_debug.dXerror[i] = dXerror[i];
-      this->param_debug.tmp2[i] = this->xc1[i];
+      this->param_debug.F_ext0[i] = this->F_ext0[i];
+      this->param_debug.F_extK[i] = this->F_extK[i];
+      if (i == 3)
+        break;
+      this->param_debug.K[i] = (this->Kd + Kv)(i, i);
     }
-    this->paramForDebug.publish(this->param_debug);
 
     // 目标位置，控制参数更新
     controllerParamRenew();
@@ -241,6 +266,12 @@ namespace franka_example_controllers
     {
       joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
     }
+
+    for (int i = 0; i < 7; i++)
+    {
+      this->param_debug.tau_d_saturate[i] = this->tau_d[i];
+    }
+    this->paramForDebug.publish(this->param_debug);
   }
 
   Eigen::Matrix<double, 7, 1> CartesianImpedanceController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)
@@ -285,7 +316,7 @@ namespace franka_example_controllers
 
   void CartesianImpedanceController::recordData()
   {
-    this->myfile << "time: " << this->time << "_\n";
+    // this->myfile << "time: " << this->time << "_\n";
     // this->myfile << "comRatio: " << this->comRatio << "_\n";
     // this->myfile << "J_pin1: \n";
     // this->myfile << this->J_pin1 << "\n";
@@ -309,6 +340,13 @@ namespace franka_example_controllers
     // this->myfile << this->G.transpose() << "\n";
     // this->myfile << "G_pin: \n";
     // this->myfile << this->G_pin.transpose() << "\n";
+
+    // this->myfile << "Kd: \n";
+    // this->myfile << this->Kd << "\n";
+    // this->myfile << "Dd: \n";
+    // this->myfile << this->Dd << "\n";
+    // this->myfile << "Md: \n";
+    // this->myfile << this->Md << "\n";
   }
 
   void CartesianImpedanceController::complianceParamCallback(franka_example_controllers::impedance_controller_paramConfig &config, uint32_t /*level*/)

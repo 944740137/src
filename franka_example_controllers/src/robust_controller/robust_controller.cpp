@@ -233,25 +233,25 @@ namespace franka_example_controllers
     // 画图
     for (int i = 0; i < 7; i++)
     {
-      this->param_debug.q[i] = this->q[i];
-      this->param_debug.q_observe[i] = this->q_observe[i];
-      this->param_debug.q_d[i] = q_d[i];
-      this->param_debug.qError[i] = qerror[i];
-      this->param_debug.dqError[i] = dqerror[i];
+      // this->param_debug.q[i] = this->q[i];
+      // this->param_debug.q_observe[i] = this->q_observe[i];
+      // this->param_debug.q_d[i] = q_d[i];
+      // this->param_debug.qError[i] = qerror[i];
+      // this->param_debug.dqError[i] = dqerror[i];
 
-      this->param_debug.dq[i] = this->dq[i];
-      this->param_debug.dq_filter[i] = this->dq_filter[i];
-      this->param_debug.dq_observe[i] = this->dq_observe[i];
-      this->param_debug.dq_d[i] = dq_d[i];
+      // this->param_debug.dq[i] = this->dq[i];
+      // this->param_debug.dq_filter[i] = this->dq_filter[i];
+      // this->param_debug.dq_observe[i] = this->dq_observe[i];
+      // this->param_debug.dq_d[i] = dq_d[i];
 
-      this->param_debug.tau_d[i] = this->tau_d[i];
-      this->param_debug.tau_J[i] = this->tau_J[i];
-      this->param_debug.tau_J_d[i] = this->tau_J_d[i];
-      this->param_debug.tau_ext[i] = this->tau_ext[i];
-      if (i == 6)
-        break;
-      this->param_debug.F_ext0[i] = this->F_ext0[i];
-      this->param_debug.F_extK[i] = this->F_extK[i];
+      // this->param_debug.tau_d[i] = this->tau_d[i];
+      // this->param_debug.tau_J[i] = this->tau_J[i];
+      // this->param_debug.tau_J_d[i] = this->tau_J_d[i];
+      // this->param_debug.tau_ext[i] = this->tau_ext[i];
+      // if (i == 6)
+      //   break;
+      // this->param_debug.F_ext0[i] = this->F_ext0[i];
+      // this->param_debug.F_extK[i] = this->F_extK[i];
     }
     this->paramForDebug.publish(this->param_debug);
 

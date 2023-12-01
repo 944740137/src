@@ -105,16 +105,19 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 6, 1> F_extK = Eigen::MatrixXd::Zero(6, 1);
 
     // 主任务
-    double r = 0.1;
-    double r_d = 0.1;
+    // double r = 0.1;
+    // double r_d = 0.1;
     Eigen::Matrix<double, 7, 1> qc = Eigen::MatrixXd::Identity(7, 1);
     Eigen::Matrix<double, 7, 7> Md = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> Dd = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 7> Dv = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> Kd = Eigen::MatrixXd::Identity(7, 7);
 
     Eigen::Matrix<double, 7, 7> Md_d = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> Dd_d = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> Kd_d = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 1> r = Eigen::MatrixXd::Zero(7, 1);
+    Eigen::Matrix<double, 7, 1> r_d = Eigen::MatrixXd::Zero(7, 1);
 
     // 零空间任务
     Eigen::Matrix<double, 7, 1> task2_q_d = Eigen::MatrixXd::Zero(7, 1);

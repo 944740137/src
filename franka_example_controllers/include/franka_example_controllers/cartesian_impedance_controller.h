@@ -108,19 +108,20 @@ namespace franka_example_controllers
     double r = 0.1;
     double r_d = 0.1;
     Eigen::Matrix<double, 7, 1> qc = Eigen::MatrixXd::Identity(7, 1);
-    Eigen::Matrix<double, 6, 1> xc1 = Eigen::MatrixXd::Identity(6, 1);
-    Eigen::Matrix<double, 6, 1> qc2 = Eigen::MatrixXd::Identity(6, 1);
-    Eigen::Matrix<double, 6, 6> Md = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 6, 6> Dd = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 6, 6> Kd = Eigen::MatrixXd::Identity(6, 6);
 
-    Eigen::Matrix<double, 6, 6> Md_d = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 6, 6> Dd_d = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 6, 6> Kd_d = Eigen::MatrixXd::Identity(6, 6);
+    Eigen::Matrix<double, 3, 1> xc1 = Eigen::MatrixXd::Identity(3, 1);
+    Eigen::Matrix<double, 3, 3> Md = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dd = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Kd = Eigen::MatrixXd::Identity(3, 3);
+
+    Eigen::Matrix<double, 3, 3> Md_d = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dd_d = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Kd_d = Eigen::MatrixXd::Identity(3, 3);
 
     // 零空间任务
     Eigen::Matrix<double, 7, 1> task2_q_d = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 7> task2_K = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 7> task2_D = Eigen::MatrixXd::Identity(7, 7);
   };
 
 } // namespace franka_example_controllers

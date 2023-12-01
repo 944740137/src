@@ -234,21 +234,21 @@ namespace franka_example_controllers
     // 画图
     for (int i = 0; i < 7; i++)
     {
-      this->param_debug.tau_d[i] = this->tau_d[i];
-      this->param_debug.tau_msr[i] = this->tau_msr[i];
-      this->param_debug.dtau_msr[i] = this->dtau_msr[i];
-      if (i == 6)
-        break;
-      this->param_debug.F_msr[i] = this->F_msr[i];
-      this->param_debug.X[i] = this->X[i];
-      this->param_debug.X_d[i] = X_d[i];
-      this->param_debug.dX[i] = this->dX[i];
-      this->param_debug.dX_d[i] = dX_d[i];
-      this->param_debug.Xerror[i] = Xerror[i];
-      this->param_debug.dXerror[i] = dXerror[i];
-      if (i >= 3)
-        continue;
-      this->param_debug.S[i] = this->s[i];
+      // this->param_debug.tau_d[i] = this->tau_d[i];
+      // this->param_debug.tau_msr[i] = this->tau_msr[i];
+      // this->param_debug.dtau_msr[i] = this->dtau_msr[i];
+      // if (i == 6)
+      //   break;
+      // this->param_debug.F_msr[i] = this->F_msr[i];
+      // this->param_debug.X[i] = this->X[i];
+      // this->param_debug.X_d[i] = X_d[i];
+      // this->param_debug.dX[i] = this->dX[i];
+      // this->param_debug.dX_d[i] = dX_d[i];
+      // this->param_debug.Xerror[i] = Xerror[i];
+      // this->param_debug.dXerror[i] = dXerror[i];
+      // if (i >= 3)
+      //   continue;
+      // this->param_debug.S[i] = this->s[i];
     }
     this->paramForDebug.publish(this->param_debug);
 

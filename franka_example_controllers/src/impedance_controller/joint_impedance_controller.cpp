@@ -151,15 +151,16 @@ namespace franka_example_controllers
       this->myfile << "编译日期:" << __DATE__ << "\n";
       this->myfile << "编译时刻:" << __TIME__ << "\n";
       this->myfile << "关节阻抗" << std::endl;
+      // this->r << 1, 1, 1, 1, 1, 1, 1;
+      // this->r_d << 1, 1, 1, 1, 1, 1, 1;
     }
   }
-  Eigen::Matrix<double, 7, 1> sgn(Eigen::Matrix<double, 7, 1> s)
+  double sgn(double s)
   {
-    double detla = 0.5;
-    for (int i = 0; i < 7; i++)
-    {
-      s[i] = s[i] / (std::fabs(s[i]) + detla);
-    }
+    double detla = 0.1;
+
+    s = s / (std::fabs(s) + detla);
+
     return s;
   }
   void JointImpedanceController::update(const ros::Time & /*time*/, const ros::Duration &t)
@@ -181,9 +182,9 @@ namespace franka_example_controllers
 
     // 轨迹和误差
     static Eigen::Matrix<double, 7, 1> aixs, q_d, dq_d, ddq_d, qerror, dqerror;
-    aixs << 1, 1, 1, /**/ 1, 1, 1, /**/ 1;
-    JointCosTrajectory(aixs, (time) / 1000, 0.4, 0.4, this->q0, this->q, this->dq, q_d, dq_d, ddq_d, qerror, dqerror);
-    // Joint0Trajectory(aixs, (time) / 1000, 0.4, 0.4, this->q0, this->q, this->dq, q_d, dq_d, ddq_d, qerror, dqerror);
+    aixs << 1, 1, 1, /**/ 1, 0, 0, /**/ 0;
+    // JointCosTrajectory(aixs, (time) / 1000, 0.4, 0.6, this->q0, this->q, this->dq, q_d, dq_d, ddq_d, qerror, dqerror);
+    Joint0Trajectory(aixs, (time) / 1000, 0.4, 0.4, this->q0, this->q, this->dq, q_d, dq_d, ddq_d, qerror, dqerror);
 
     // 伪逆矩阵计算
     static Eigen::MatrixXd J_pinv;
@@ -192,48 +193,83 @@ namespace franka_example_controllers
 
     // 命令加速度与输入力矩
     static Eigen::Matrix<double, 7, 1> tmp1;
-    for (int i = 0; i < 7; i++)
-    {
-      tmp1[i] = dqerror[i] * std::fabs(dqerror[i]);
-    }
+    static Eigen::Matrix<double, 7, 1> tmp2;
 
-    this->qc = ddq_d + r * sgn(qerror + (tmp1) / (2 * r));
-    this->tau_d << this->M * (this->qc) + this->c;
-    if (this->time == 0)
-    std::cout << "新阻抗" << std::endl;
+    // ****************************************************新阻抗***************************************************
+    // for (int i = 0; i < 7; i++)
+    // {
+    //   tmp1[i] = dqerror[i] * std::fabs(dqerror[i]);
+    //   tmp2[i] = sgn(qerror[i] + (tmp1[i]) / (2 * r[i]));
+    //   this->qc[i] = ddq_d[i] + this->r[i] * tmp2[i];
+    // }
+    // this->tau_d << this->M * (this->qc) + this->c;
+    // if (this->time == 0)
+    //   std::cout << "新阻抗" << std::endl;
+    // ************************************************************************************************************
 
+    // ****************************************************老阻抗***************************************************
     // this->tau_d << this->M * (ddq_d + this->Md.inverse() * (this->Kd * qerror + this->Dd * dqerror)) + this->c;
     // if (this->time == 0)
     //   std::cout << "老阻抗" << std::endl;
+    // *************************************************************************************************************
+
+    // ****************************************************变阻尼阻抗*************************************************
+    double bar = 0.5;
+    double rd = 2;
+    static Eigen::Matrix<double, 7, 7> Dv = Eigen::MatrixXd::Zero(7, 7);
+    static Eigen::Matrix<double, 7, 1> fen_mu = Eigen::MatrixXd::Zero(7, 1);
+    for (int i = 0; i < 7; i++)
+    {
+      fen_mu[i] = (bar * bar - dqerror[i] * dqerror[i]);
+      Dv(i, i) = rd / fen_mu[i];
+    }
+    this->tau_d << this->M * (ddq_d + this->Md.inverse() * (this->Kd * qerror + (this->Dd + Dv) * dqerror)) + this->c;
+    if (this->time == 0)
+      std::cout << "变阻尼阻抗" << std::endl;
+    // *************************************************************************************************************
 
     // 记录数据
     this->time++;
-    recordData();
-    this->myfile << " " << std::endl; // 刷新缓冲区
+    // recordData();
+    // this->myfile << "Dv: " << Dv(1, 1) << "\n";
+    // this->myfile << "dqerror: " << dqerror.transpose() << "\n";
+    // this->myfile << "fen_mu: " << fen_mu[1] << "\n";
+    // this->myfile << "tau_d: " << tau_d.transpose() << "\n";
+    // this->myfile << "this->qc:" << this->qc.transpose() << "\n";
+    // this->myfile << "tmp1:" << tmp1.transpose() << "\n";
+    // this->myfile << "tmp2:" << tmp2.transpose() << "\n";
+    // this->myfile << " " << std::endl; // 刷新缓冲区
 
     // 画图
     for (int i = 0; i < 7; i++)
     {
       this->param_debug.tau_d[i] = this->tau_d[i];
-      this->param_debug.tmp1[i] = tmp1[i];
+      this->param_debug.tau_J[i] = this->tau_J[i];
+      this->param_debug.tau_J_d[i] = this->tau_J_d[i];
       this->param_debug.q[i] = this->q[i];
       this->param_debug.q_d[i] = q_d[i];
       this->param_debug.dq[i] = this->dq[i];
       this->param_debug.dq_d[i] = dq_d[i];
       this->param_debug.qError[i] = qerror[i];
       this->param_debug.dqError[i] = dqerror[i];
+      this->param_debug.fen_mu[i] = fen_mu[i];
+      this->param_debug.D[i] = (this->Dd + Dv)(i, i);
+    }
+
+    // // 平滑命令
+    // tau_d << saturateTorqueRate(this->tau_d, this->tau_J_d);
+    for (size_t i = 0; i < 7; ++i)
+    {
+      joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
+    }
+    for (int i = 0; i < 7; i++)
+    {
+      this->param_debug.tau_d_saturate[i] = this->tau_d[i];
     }
     this->paramForDebug.publish(this->param_debug);
 
     // 目标位置，控制参数更新
     controllerParamRenew();
-
-    // 平滑命令
-    tau_d << saturateTorqueRate(this->tau_d, this->tau_J_d);
-    for (size_t i = 0; i < 7; ++i)
-    {
-      joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
-    }
   }
 
   Eigen::Matrix<double, 7, 1> JointImpedanceController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)
@@ -312,12 +348,24 @@ namespace franka_example_controllers
   {
     if (time == 0)
     {
-      this->r = config.Joint_r;
+      this->r[0] = config.Joint_r1;
+      this->r[1] = config.Joint_r2;
+      this->r[2] = config.Joint_r3;
+      this->r[3] = config.Joint_r4;
+      this->r[4] = config.Joint_r4;
+      this->r[5] = config.Joint_r4;
+      this->r[6] = config.Joint_r4;
       this->Kd = config.Joint_Kd * Eigen::MatrixXd::Identity(7, 7);
       this->Dd = config.Joint_Dd * Eigen::MatrixXd::Identity(7, 7);
       this->Md = config.Joint_Md * Eigen::MatrixXd::Identity(7, 7);
     }
-    this->r_d = config.Joint_r;
+    this->r_d[0] = config.Joint_r1;
+    this->r_d[1] = config.Joint_r2;
+    this->r_d[2] = config.Joint_r3;
+    this->r_d[3] = config.Joint_r4;
+    this->r_d[4] = config.Joint_r4;
+    this->r_d[5] = config.Joint_r4;
+    this->r_d[6] = config.Joint_r4;
     this->Kd_d = config.Joint_Kd * Eigen::MatrixXd::Identity(7, 7);
     this->Dd_d = config.Joint_Dd * Eigen::MatrixXd::Identity(7, 7);
     this->Md_d = config.Joint_Md * Eigen::MatrixXd::Identity(7, 7);
