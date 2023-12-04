@@ -205,28 +205,28 @@ namespace franka_example_controllers
     // if (this->time == 0)
     //   std::cout << "新阻抗" << std::endl;
 
-    // this->xc1 = ddX_d.block(0, 0, 3, 1) + this->Md.inverse() * (this->Kd * Xerror.block(0, 0, 3, 1) + this->Dd * dXerror.block(0, 0, 3, 1));
-    // this->qc = N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq);
-    // this->tau_d << this->M * (J_pinv.block(0, 0, 7, 3) * (this->xc1 - this->dJ.block(0, 0, 3, 7) * this->dq) + this->qc) + this->c;
-    // if (this->time == 0)
-    //   std::cout << "老阻抗" << std::endl;
-
-    static Eigen::Matrix<double, 3, 3> Kv = Eigen::MatrixXd::Zero(6, 6);
-    static Eigen::Matrix<double, 3, 1> fen_mu = Eigen::MatrixXd::Zero(6, 1);
-    static double rd[3] = {0.5, 0.5, 0.5};
-    static double bar[3] = {0.4, 0.4, 0.4};
-    for (int i = 0; i < 3; i++)
-    {
-      if (i != 0)
-        break;
-      fen_mu[i] = (bar[i] * bar[i] - Xerror[i] * Xerror[i]);
-      Kv(i, i) = rd[i] / fen_mu[i];
-    }
-    this->xc1 = ddX_d.block(0, 0, 3, 1) + this->Md.inverse() * ((this->Kd + Kv) * Xerror.block(0, 0, 3, 1) + this->Dd * dXerror.block(0, 0, 3, 1));
+    this->xc1 = ddX_d.block(0, 0, 3, 1) + this->Md.inverse() * (this->Kd * Xerror.block(0, 0, 3, 1) + this->Dd * dXerror.block(0, 0, 3, 1));
     this->qc = N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq);
     this->tau_d << this->M * (J_pinv.block(0, 0, 7, 3) * (this->xc1 - this->dJ.block(0, 0, 3, 7) * this->dq) + this->qc) + this->c;
     if (this->time == 0)
-      std::cout << "变阻抗" << std::endl;
+      std::cout << "老阻抗" << std::endl;
+
+    static Eigen::Matrix<double, 3, 3> Kv = Eigen::MatrixXd::Zero(6, 6);
+    static Eigen::Matrix<double, 3, 1> fen_mu = Eigen::MatrixXd::Zero(6, 1);
+    // static double rd[3] = {0.5, 0.5, 0.5};
+    // static double bar[3] = {0.3, 0.3, 0.3};
+    // for (int i = 0; i < 3; i++)
+    // {
+    //   if (i != 0)
+    //     break;
+    //   fen_mu[i] = (bar[i] * bar[i] - Xerror[i] * Xerror[i]);
+    //   Kv(i, i) = rd[i] / fen_mu[i];
+    // }
+    // this->xc1 = ddX_d.block(0, 0, 3, 1) + this->Md.inverse() * ((this->Kd + Kv) * Xerror.block(0, 0, 3, 1) + this->Dd * dXerror.block(0, 0, 3, 1));
+    // this->qc = N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq);
+    // this->tau_d << this->M * (J_pinv.block(0, 0, 7, 3) * (this->xc1 - this->dJ.block(0, 0, 3, 7) * this->dq) + this->qc) + this->c;
+    // if (this->time == 0)
+    //   std::cout << "变阻抗" << std::endl;
 
     // 记录数据
     this->time++;

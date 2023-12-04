@@ -208,13 +208,13 @@ namespace franka_example_controllers
     // ************************************************************************************************************
 
     // ****************************************************老阻抗***************************************************
-    // this->tau_d << this->M * (ddq_d + this->Md.inverse() * (this->Kd * qerror + this->Dd * dqerror)) + this->c;
+    // this->tau_d << this->M * (ddq_d + this->Md.inverse() * (/* this->Kd * qerror + */ this->Dd * dqerror)) + this->c;
     // if (this->time == 0)
     //   std::cout << "老阻抗" << std::endl;
     // *************************************************************************************************************
 
     // ****************************************************变阻尼阻抗*************************************************
-    double bar = 0.5;
+    double bar = 0.6;
     double rd = 2;
     static Eigen::Matrix<double, 7, 7> Dv = Eigen::MatrixXd::Zero(7, 7);
     static Eigen::Matrix<double, 7, 1> fen_mu = Eigen::MatrixXd::Zero(7, 1);
@@ -223,7 +223,7 @@ namespace franka_example_controllers
       fen_mu[i] = (bar * bar - dqerror[i] * dqerror[i]);
       Dv(i, i) = rd / fen_mu[i];
     }
-    this->tau_d << this->M * (ddq_d + this->Md.inverse() * (this->Kd * qerror + (this->Dd + Dv) * dqerror)) + this->c;
+    this->tau_d << this->M * (ddq_d + this->Md.inverse() * (/* this->Kd * qerror +  */(this->Dd + Dv) * dqerror)) + this->c;
     if (this->time == 0)
       std::cout << "变阻尼阻抗" << std::endl;
     // *************************************************************************************************************
