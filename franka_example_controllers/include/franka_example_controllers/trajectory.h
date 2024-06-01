@@ -40,3 +40,7 @@ void cartesianTrajectoryXZ3(double nowTime, double posRatio, double velRatio, co
                             const Eigen::Matrix<double, 6, 1> &X0, const Eigen::Matrix<double, 6, 1> &X, const Eigen::Matrix<double, 6, 1> &dX,
                             Eigen::Matrix<double, 6, 1> &X_d, Eigen::Matrix<double, 6, 1> &dX_d, Eigen::Matrix<double, 6, 1> &ddX_d,
                             Eigen::Matrix<double, 6, 1> &Xerror, Eigen::Matrix<double, 6, 1> &dXerror);
+void cartesianTrajectoryX1(double nowTime, double posRatio, double velRatio, const Eigen::Affine3d &T, const Eigen::Affine3d &T0,
+                            const Eigen::Matrix<double, 6, 1> &X0, const Eigen::Matrix<double, 6, 1> &X, const Eigen::Matrix<double, 6, 1> &dX,
+                            Eigen::Matrix<double, 6, 1> &X_d, Eigen::Matrix<double, 6, 1> &dX_d, Eigen::Matrix<double, 6, 1> &ddX_d,
+                            Eigen::Matrix<double, 6, 1> &Xerror, Eigen::Matrix<double, 6, 1> &dXerror);

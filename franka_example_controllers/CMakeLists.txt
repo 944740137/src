@@ -9,6 +9,8 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(OpenCV_DIR /usr/lib/x86_64-linux-gnu/cmake/opencv4/) 
+
 #查找编译依赖的其他CMake/Catkin包
 find_package(catkin REQUIRED COMPONENTS
   controller_interface
@@ -28,6 +30,9 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   urdf
   visualization_msgs
+  OpenCV REQUIRED         
+  cv_bridge
+  image_transport
 )
 
 #查找编译依赖的库
@@ -51,6 +56,7 @@ generate_dynamic_reconfigure_options(
   cfg/nullspace_impedance_controller.cfg
   cfg/impedance_controller.cfg
   cfg/robust_controller.cfg
+  cfg/nocontact_impedance_controller.cfg
 )
 
 #指定包编译信息导出：它对依赖于此功能包的其他功能包来说具有重要作用
@@ -74,6 +80,9 @@ catkin_package(
     roscpp
     urdf
     visualization_msgs
+    sensor_msgs
+    cv_bridge
+    image_transport
   DEPENDS Franka
 )
 
@@ -85,6 +94,7 @@ add_library(franka_example_controllers
   src/robust_controller/robust_controller.cpp
   src/impedance_controller/joint_impedance_controller.cpp
   src/impedance_controller/cartesian_impedance_controller.cpp
+  src/nocontact_impedance/nocontact_impedance_controller.cpp
   src/trajectory.cpp
   src/pinocchino_interactive.cpp
 )
@@ -101,6 +111,7 @@ add_dependencies(franka_example_controllers
 target_link_libraries(franka_example_controllers PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
   pinocchio::pinocchio
 )
 # 添加头文件地址
@@ -108,6 +119,7 @@ target_include_directories(franka_example_controllers SYSTEM PUBLIC
   ${Franka_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 target_include_directories(franka_example_controllers PUBLIC
   include

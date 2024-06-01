@@ -243,17 +243,17 @@ namespace franka_example_controllers
     // 画图
     for (int i = 0; i < 7; i++)
     {
-      this->param_debug.tau_d[i] = this->tau_d[i];
-      this->param_debug.tau_J[i] = this->tau_J[i];
-      this->param_debug.tau_J_d[i] = this->tau_J_d[i];
+      // this->param_debug.tau_d[i] = this->tau_d[i];
+      // this->param_debug.tau_J[i] = this->tau_J[i];
+      // this->param_debug.tau_J_d[i] = this->tau_J_d[i];
       this->param_debug.q[i] = this->q[i];
       this->param_debug.q_d[i] = q_d[i];
       this->param_debug.dq[i] = this->dq[i];
       this->param_debug.dq_d[i] = dq_d[i];
       this->param_debug.qError[i] = qerror[i];
       this->param_debug.dqError[i] = dqerror[i];
-      this->param_debug.fen_mu[i] = fen_mu[i];
-      this->param_debug.D[i] = (this->Dd + Dv)(i, i);
+      // this->param_debug.fen_mu[i] = fen_mu[i];
+      // this->param_debug.D[i] = (this->Dd + Dv)(i, i);
     }
 
     // // 平滑命令
@@ -262,12 +262,7 @@ namespace franka_example_controllers
     {
       joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
     }
-    for (int i = 0; i < 7; i++)
-    {
-      this->param_debug.tau_d_saturate[i] = this->tau_d[i];
-    }
     this->paramForDebug.publish(this->param_debug);
-
     // 目标位置，控制参数更新
     controllerParamRenew();
   }

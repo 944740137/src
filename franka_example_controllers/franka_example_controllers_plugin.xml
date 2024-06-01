@@ -29,4 +29,9 @@
           CartesianImpedanceController 笛卡尔新阻抗
     </description>
   </class>
+  <class name="franka_example_controllers/NocontactImpedanceController" type="franka_example_controllers::NocontactImpedanceController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          NocontactImpedanceController 非接触阻抗
+    </description>
+  </class>
 </library>

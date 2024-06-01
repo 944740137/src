@@ -254,3 +254,50 @@ void cartesianTrajectoryXZ3(double nowTime, double posRatio, double velRatio, co
     // 误差计算
     calCartesianError(T, X_d, dX_d, X, dX, orientation_d, dorientation_d, orientation, dorientation, Xerror, dXerror);
 }
+void cartesianTrajectoryX1(double nowTime, double posRatio, double velRatio, const Eigen::Affine3d &T, const Eigen::Affine3d &T0,
+                            const Eigen::Matrix<double, 6, 1> &X0, const Eigen::Matrix<double, 6, 1> &X, const Eigen::Matrix<double, 6, 1> &dX,
+                            Eigen::Matrix<double, 6, 1> &X_d, Eigen::Matrix<double, 6, 1> &dX_d, Eigen::Matrix<double, 6, 1> &ddX_d,
+                            Eigen::Matrix<double, 6, 1> &Xerror, Eigen::Matrix<double, 6, 1> &dXerror)
+{
+    if (nowTime == 0)
+        std::cout << "[---------------] cartesianTrajectoryXZ: 3" << std::endl;
+
+    // 初始化（用不到的自由度初始成与当前广义坐标一样，速度加速度为0）
+    X_d = X0;
+    dX_d.setZero();
+    ddX_d.setZero();
+
+    // 期望位置函数
+    double alpha = 2 * M_PI / 5 * velRatio;
+    double radius = 0.16;
+    double deltaX = radius * (1 - std::cos(alpha * nowTime)) * posRatio;
+    double dDeltaX = -radius * alpha * std::sin(alpha * nowTime) * posRatio;
+    double ddDeltaX = -radius * alpha * alpha * std::cos(alpha * nowTime) * posRatio;
+    double deltaZ = radius * std::sin(alpha * nowTime) * posRatio;
+    double dDeltaZ = radius * alpha * std::cos(alpha * nowTime) * posRatio;
+    double ddDeltaZ = -radius * alpha * alpha * std::sin(alpha * nowTime) * posRatio;
+
+    // 期望位置赋值
+    X_d[0] = X0[0] + deltaX;
+    dX_d[0] = dDeltaX;
+    ddX_d[0] = ddDeltaX;
+
+    // 期望姿态函数
+    Eigen::Quaterniond orientation0(T0.rotation());
+    Eigen::Quaterniond orientation(T.rotation());
+    Eigen::Quaterniond orientation_d = orientation0;
+    Eigen::Quaterniond dorientation = Eigen::AngleAxisd(dX[3], Eigen::Vector3d::UnitX()) *
+                                      Eigen::AngleAxisd(dX[4], Eigen::Vector3d::UnitY()) *
+                                      Eigen::AngleAxisd(dX[5], Eigen::Vector3d::UnitZ());
+    Eigen::Quaterniond dorientation_d = Eigen::AngleAxisd(dX_d[3], Eigen::Vector3d::UnitX()) *
+                                        Eigen::AngleAxisd(dX_d[4], Eigen::Vector3d::UnitY()) *
+                                        Eigen::AngleAxisd(dX_d[5], Eigen::Vector3d::UnitZ());
+
+    // 期望姿态赋值
+    X_d.tail(3) << orientation_d.toRotationMatrix().eulerAngles(2, 1, 0);
+    dX_d.tail(3) << dorientation_d.toRotationMatrix().eulerAngles(2, 1, 0);
+    // ddX_d.tail(3) << ddorientation_d.toRotationMatrix().eulerAngles(2, 1, 0); //todo 插值：贝塞尔 四元数
+
+    // 误差计算
+    calCartesianError(T, X_d, dX_d, X, dX, orientation_d, dorientation_d, orientation, dorientation, Xerror, dXerror);
+}

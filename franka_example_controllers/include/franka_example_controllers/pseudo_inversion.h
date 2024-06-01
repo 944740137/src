@@ -11,27 +11,37 @@
 #include <Eigen/LU>
 #include <Eigen/SVD>
 #include <time.h>
-namespace franka_example_controllers {
-
-
-
-inline void pseudoInverse(const Eigen::MatrixXd& M_, Eigen::MatrixXd& M_pinv_, bool damped = true) {
-  double lambda_ = damped ? 0.2 : 0.0;
-
-  Eigen::JacobiSVD<Eigen::MatrixXd> svd(M_, Eigen::ComputeFullU | Eigen::ComputeFullV);
-  Eigen::JacobiSVD<Eigen::MatrixXd>::SingularValuesType sing_vals_ = svd.singularValues();
-  Eigen::MatrixXd S_ = M_;  // copying the dimensions of M_, its content is not needed.
-  S_.setZero();
-
-  for (int i = 0; i < sing_vals_.size(); i++)
-    S_(i, i) = (sing_vals_(i)) / (sing_vals_(i) * sing_vals_(i) + lambda_ * lambda_);
-
-  M_pinv_ = Eigen::MatrixXd(svd.matrixV() * S_.transpose() * svd.matrixU().transpose());
-}
-
-//右逆
-inline void weightedPseudoInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd& M_pinv, const Eigen::MatrixXd &W) 
+namespace franka_example_controllers
 {
-  M_pinv = W.inverse() * M.transpose() * (M * W.inverse() * M.transpose()).inverse();
-}
-}  // namespace franka_example_controllers
+
+  inline void pseudoInverse(const Eigen::MatrixXd &M_, Eigen::MatrixXd &M_pinv_, bool damped = true)
+  {
+    double lambda_ = damped ? 0.2 : 0.0;
+
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(M_, Eigen::ComputeFullU | Eigen::ComputeFullV);
+    Eigen::JacobiSVD<Eigen::MatrixXd>::SingularValuesType sing_vals_ = svd.singularValues();
+    Eigen::MatrixXd S_ = M_; // copying the dimensions of M_, its content is not needed.
+    S_.setZero();
+
+    for (int i = 0; i < sing_vals_.size(); i++)
+      S_(i, i) = (sing_vals_(i)) / (sing_vals_(i) * sing_vals_(i) + lambda_ * lambda_);
+
+    M_pinv_ = Eigen::MatrixXd(svd.matrixV() * S_.transpose() * svd.matrixU().transpose());
+  }
+
+  // 右逆
+  inline void weightedPseudoInverse(const Eigen::MatrixXd &M, Eigen::MatrixXd &M_pinv, const Eigen::MatrixXd &W)
+  {
+    M_pinv = W.inverse() * M.transpose() * (M * W.inverse() * M.transpose()).inverse();
+  }
+  // 6 7
+  template <int _row, int _col>
+  inline void weightedPseudoInverse2(const Eigen::Matrix<double, _row, _col> &J,
+                                     const Eigen::Matrix<double, _col, _col> &W,
+                                     Eigen::Matrix<double, _col, _row> &J_inv,
+                                     Eigen::Matrix<double, _row, _row> &Lambda)
+  {
+    Lambda = (J * W.inverse() * J.transpose()).inverse();
+    J_inv = W.inverse() * J.transpose() * Lambda;
+  }
+} // namespace franka_example_controllers
