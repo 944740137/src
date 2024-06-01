@@ -82,6 +82,8 @@ namespace franka_example_controllers
     // 初始值
     Eigen::Matrix<double, 7, 1> q0 = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 6, 1> X0 = Eigen::MatrixXd::Zero(6, 1);
+    Eigen::Matrix<double, 3, 1> pos0 = Eigen::MatrixXd::Zero(3, 1);
+    Eigen::Quaterniond ori0;
     Eigen::Affine3d T0;
 
     // 获取传感器数据
@@ -96,6 +98,10 @@ namespace franka_example_controllers
     Eigen::Affine3d T;
     Eigen::Matrix<double, 6, 1> X = Eigen::MatrixXd::Zero(6, 1);
     Eigen::Matrix<double, 6, 1> dX = Eigen::MatrixXd::Zero(6, 1);
+    Eigen::Matrix<double, 3, 1> pos = Eigen::MatrixXd::Zero(3, 1);
+    Eigen::Quaterniond ori;
+    Eigen::Matrix<double, 3, 1> dpos = Eigen::MatrixXd::Zero(3, 1);
+    Eigen::Matrix<double, 3, 1> dori = Eigen::MatrixXd::Zero(3, 1);
 
     // 获取动力学/运动学数据
     Eigen::Matrix<double, 7, 7> M = Eigen::MatrixXd::Identity(7, 7);
@@ -131,14 +137,25 @@ namespace franka_example_controllers
     double r_d = 0.1;
     Eigen::Matrix<double, 7, 1> qc = Eigen::MatrixXd::Identity(7, 1);
 
-    Eigen::Matrix<double, 6, 1> xc1 = Eigen::MatrixXd::Identity(6, 1);
-    Eigen::Matrix<double, 6, 6> Md = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 6, 6> Dd = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 6, 6> Kd = Eigen::MatrixXd::Identity(6, 6);
+    Eigen::Matrix<double, 3, 1> xc1 = Eigen::MatrixXd::Identity(3, 1);
+    Eigen::Matrix<double, 3, 1> xc2 = Eigen::MatrixXd::Identity(3, 1);
+    Eigen::Matrix<double, 3, 3> Md_pos = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dd_pos = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Kd_pos = Eigen::MatrixXd::Identity(3, 3);
 
-    Eigen::Matrix<double, 6, 6> Md_d = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 6, 6> Dd_d = Eigen::MatrixXd::Identity(6, 6);
-    Eigen::Matrix<double, 6, 6> Kd_d = Eigen::MatrixXd::Identity(6, 6);
+    Eigen::Matrix<double, 3, 3> Md_ori = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dd_ori = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Kd_ori = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Ki_ori = Eigen::MatrixXd::Identity(3, 3);
+
+    Eigen::Matrix<double, 3, 3> Md_d_pos = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dd_d_pos = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Kd_d_pos = Eigen::MatrixXd::Identity(3, 3);
+
+    Eigen::Matrix<double, 3, 3> Md_d_ori = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dd_d_ori = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Kd_d_ori = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Ki_d_ori = Eigen::MatrixXd::Identity(3, 3);
 
     // 零空间任务
     Eigen::Matrix<double, 7, 1> task2_q_d = Eigen::MatrixXd::Zero(7, 1);

@@ -139,6 +139,8 @@ namespace franka_example_controllers
     this->T0 = Eigen::Affine3d(Eigen::Matrix4d::Map(initial_state.O_T_EE.data())); // 齐次变换矩阵
     this->q0 = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
     this->X0 << Eigen::Vector3d(this->T0.translation()), Eigen::Quaterniond(this->T0.rotation()).toRotationMatrix().eulerAngles(2, 1, 0);
+    this->pos0 = this->T0.translation();
+    this->ori0 = Eigen::Quaterniond(this->T0.rotation());
     this->task2_q_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(initial_state.q.data());
 
     if (!this->myfile.is_open())
@@ -150,7 +152,7 @@ namespace franka_example_controllers
       this->myfile << "非接触阻抗" << std::endl;
     }
 
-    task2_K = 5 * task2_K;
+    task2_K = 30 * task2_K;
   }
 
   void NocontactImpedanceController::update(const ros::Time & /*time*/, const ros::Duration &t)
@@ -170,15 +172,26 @@ namespace franka_example_controllers
     this->dJ = S1_dot;
 
     // 轨迹和误差  3轨迹最差
-    static Eigen::Matrix<double, 6, 1> X_d, dX_d, ddX_d, Xerror, dXerror;
-    // cartesianTrajectoryXZ1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectoryXZ2(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectoryXZ3(time / 1000, 0.6, 0.8, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    cartesianTrajectoryX1(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
-    // cartesianTrajectory0(time / 1000, 0.6, 0.5, this->T, this->T0, this->X0, this->X, this->dX, X_d, dX_d, ddX_d, Xerror, dXerror);
+    static Eigen::Matrix<double, 3, 1> pos_d, dpos_d, ddpos_d, pos_error, dpos_error;
+    static Eigen::Matrix<double, 3, 1> ori_d, dori_d, ddori_d, ori_error, dori_error;
+    static Eigen::Matrix<double, 3, 1> Ipos_error = Eigen::MatrixXd::Zero(3, 1);
+    static Eigen::Matrix<double, 3, 1> Iori_error = Eigen::MatrixXd::Zero(3, 1);
+    cartesianPosTrajectoryX1(time / 1000, 0.6, 0.5, this->pos0, this->pos, this->dpos, pos_d, dpos_d, ddpos_d, pos_error, dpos_error);
+    ddori_d = Eigen::MatrixXd::Zero(3, 1);
+    if (this->ori0.coeffs().dot(this->ori.coeffs()) < 0.0)
+      this->ori.coeffs() << -this->ori.coeffs();
+    Eigen::Quaterniond error_quaternion(this->ori.inverse() * this->ori0);
+    ori_error << error_quaternion.x(), error_quaternion.y(), error_quaternion.z();
+    ori_error << this->T.rotation() * ori_error.tail(3);
+    dori_error = -this->dX.tail(3);
 
     // 命令加速度与输入力
-    this->F_c = /* this->Lambda *  */ (ddX_d + this->Md.inverse() * (this->Kd * Xerror + this->Dd * -(this->J * dq)) /*  - this->dJ * this->dq */);
+    this->xc1 = ddpos_d + this->Md_pos.inverse() * (this->Kd_pos * pos_error + this->Dd_pos * dpos_error);
+    this->F_c.head(3) = /* this->Lambda *  */ (this->xc1 /*  - this->dJ * this->dq */);
+
+    this->xc2 = ddori_d + this->Md_ori.inverse() * (this->Kd_ori * ori_error + this->Dd_ori * dori_error);
+    this->F_c.tail(3) = /* this->Lambda *  */ (this->xc2 /*  - this->dJ * this->dq */);
+
     this->tau_d = this->J.transpose() * this->F_c + this->N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq) + this->c;
     if (this->time == 0)
       std::cout << "非接触阻抗" << std::endl;
@@ -186,19 +199,25 @@ namespace franka_example_controllers
     // 记录数据
     this->time++;
     recordData();
+    // this->myfile << "ori_error: " << ori_error.transpose() << "\n";
+    // this->myfile << "F_c: " << this->F_c.transpose() << "\n";
+    // this->myfile << "xc2: " << this->xc2.transpose() << "\n";
 
     // 画图
+    for (int i = 0; i < 3; i++)
+    {
+      this->param_debug.pos[i] = this->pos[i];
+      this->param_debug.pos_d[i] = pos_d[i];
+      this->param_debug.ori[i] = this->ori.toRotationMatrix().eulerAngles(2, 1, 0)[i];
+      this->param_debug.ori_d[i] = this->ori0.toRotationMatrix().eulerAngles(2, 1, 0)[i];
+      this->param_debug.pos_error[i] = pos_error[i];
+      this->param_debug.ori_error[i] = ori_error[i];
+    }
     for (int i = 0; i < 7; i++)
     {
       this->param_debug.tau_d[i] = this->tau_d[i];
       if (i == 6)
         break;
-      this->param_debug.X[i] = this->X[i];
-      this->param_debug.X_d[i] = X_d[i];
-      this->param_debug.dX[i] = this->dX[i];
-      this->param_debug.dX_d[i] = dX_d[i];
-      this->param_debug.Xerror[i] = Xerror[i];
-      this->param_debug.dXerror[i] = dXerror[i];
       this->param_debug.F_ext0[i] = this->F_ext0[i];
       this->param_debug.F_extK[i] = this->F_extK[i];
     }
@@ -295,7 +314,11 @@ namespace franka_example_controllers
     this->tau_J_d = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_J_d.data());
     this->T = Eigen::Affine3d(Eigen::Matrix4d::Map(robot_state.O_T_EE.data())); // 齐次变换矩阵
     this->X << Eigen::Vector3d(this->T.translation()), Eigen::Quaterniond(this->T.rotation()).toRotationMatrix().eulerAngles(2, 1, 0);
+    this->pos = this->T.translation();
+    this->ori = Eigen::Quaterniond(this->T.rotation());
     this->dX = this->J * this->dq;
+    this->dpos = this->dX.block(0, 0, 3, 1);
+    this->dori = this->dX.block(0, 2, 3, 1);
 
     this->tau_ext = Eigen::Map<Eigen::Matrix<double, 7, 1>>(robot_state.tau_ext_hat_filtered.data());
     this->F_ext0 = Eigen::Map<Eigen::Matrix<double, 6, 1>>(robot_state.O_F_ext_hat_K.data());
@@ -337,32 +360,21 @@ namespace franka_example_controllers
     // this->myfile << this->G.transpose() << "\n";
     // this->myfile << "G_pin: \n";
     // this->myfile << this->G_pin.transpose() << "\n";
-
-    this->myfile << "Kd: \n";
-    this->myfile << this->Kd << "\n";
-    this->myfile << "Dd: \n";
-    this->myfile << this->Dd << "\n";
-    this->myfile << "Md: \n";
-    this->myfile << this->Md << "\n";
-    this->myfile << "task2_K: \n";
-    this->myfile << this->task2_K << "\n";
-    this->myfile << "task2_D: \n";
-    this->myfile << this->task2_D << "\n";
   }
 
   void NocontactImpedanceController::complianceParamCallback(franka_example_controllers::nocontact_impedance_paramConfig &config, uint32_t /*level*/)
   {
     if (this->time == 0)
     {
-      this->Kd.topLeftCorner(3, 3) = config.Cartesian_Kd_pos * Eigen::MatrixXd::Identity(3, 3);
-      this->Dd.topLeftCorner(3, 3) = 2.0 * sqrt(config.Cartesian_Kd_pos) * Eigen::MatrixXd::Identity(3, 3);
-      this->Kd.bottomRightCorner(3, 3) = config.Cartesian_Kd_ori * Eigen::MatrixXd::Identity(3, 3);
-      this->Dd.bottomRightCorner(3, 3) = 2.0 * sqrt(config.Cartesian_Kd_ori) * Eigen::MatrixXd::Identity(3, 3);
+      this->Kd_pos = config.Cartesian_Kd_pos * Eigen::MatrixXd::Identity(3, 3);
+      this->Dd_pos = 2.0 * sqrt(config.Cartesian_Kd_pos) * Eigen::MatrixXd::Identity(3, 3);
+      this->Kd_ori = config.Cartesian_Kd_ori * Eigen::MatrixXd::Identity(3, 3);
+      this->Dd_ori = 2.0 * sqrt(config.Cartesian_Kd_ori) * Eigen::MatrixXd::Identity(3, 3);
     }
-    this->Kd_d.topLeftCorner(3, 3) = config.Cartesian_Kd_pos * Eigen::MatrixXd::Identity(3, 3);
-    this->Dd_d.topLeftCorner(3, 3) = 2.0 * sqrt(config.Cartesian_Kd_pos) * Eigen::MatrixXd::Identity(3, 3);
-    this->Kd_d.bottomRightCorner(3, 3) = config.Cartesian_Kd_ori * Eigen::MatrixXd::Identity(3, 3);
-    this->Dd_d.bottomRightCorner(3, 3) = 2.0 * sqrt(config.Cartesian_Kd_ori) * Eigen::MatrixXd::Identity(3, 3);
+    this->Kd_d_pos = config.Cartesian_Kd_pos * Eigen::MatrixXd::Identity(3, 3);
+    this->Dd_d_pos = 2.0 * sqrt(config.Cartesian_Kd_pos) * Eigen::MatrixXd::Identity(3, 3);
+    this->Kd_d_ori = config.Cartesian_Kd_ori * Eigen::MatrixXd::Identity(3, 3);
+    this->Dd_d_ori = 2.0 * sqrt(config.Cartesian_Kd_ori) * Eigen::MatrixXd::Identity(3, 3);
 
     this->task2_K = config.Joint_Kd * Eigen::MatrixXd::Identity(7, 7);
     this->task2_D = 2.0 * sqrt(config.Joint_Kd) * Eigen::MatrixXd::Identity(7, 7);
@@ -370,9 +382,13 @@ namespace franka_example_controllers
 
   void NocontactImpedanceController::controllerParamRenew()
   {
-    this->Kd = filter_params * this->Kd_d + (1.0 - filter_params) * this->Kd;
-    this->Dd = filter_params * this->Dd_d + (1.0 - filter_params) * this->Dd;
-    this->Md = filter_params * this->Md_d + (1.0 - filter_params) * this->Md;
+    this->Kd_pos = filter_params * this->Kd_d_pos + (1.0 - filter_params) * this->Kd_pos;
+    this->Dd_pos = filter_params * this->Dd_d_pos + (1.0 - filter_params) * this->Dd_pos;
+    this->Md_pos = filter_params * this->Md_d_pos + (1.0 - filter_params) * this->Md_pos;
+
+    this->Kd_ori = filter_params * this->Kd_d_ori + (1.0 - filter_params) * this->Kd_ori;
+    this->Dd_ori = filter_params * this->Dd_d_ori + (1.0 - filter_params) * this->Dd_ori;
+    this->Md_ori = filter_params * this->Md_d_ori + (1.0 - filter_params) * this->Md_ori;
   }
 } // namespace franka_example_controllers
 
