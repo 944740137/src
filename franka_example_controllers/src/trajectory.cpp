@@ -287,3 +287,31 @@ void cartesianPosTrajectoryX1(double nowTime, double posRatio, double velRatio,
     pos_error = pos_d - pos;
     dpos_error = dpos_d - dpos;
 }
+
+void cartesianPosTrajectory0(double nowTime, double posRatio, double velRatio,
+                             const Eigen::Matrix<double, 3, 1> &pos0, const Eigen::Matrix<double, 3, 1> &pos, const Eigen::Matrix<double, 3, 1> &dpos,
+                             Eigen::Matrix<double, 3, 1> &pos_d, Eigen::Matrix<double, 3, 1> &dpos_d, Eigen::Matrix<double, 3, 1> &ddpos_d,
+                             Eigen::Matrix<double, 3, 1> &pos_error, Eigen::Matrix<double, 3, 1> &dpos_error)
+{
+    if (nowTime == 0)
+        std::cout << "[---------------] cartesianTrajectoryXZ: 3" << std::endl;
+
+    // 初始化（用不到的自由度初始成与当前广义坐标一样，速度加速度为0）
+    pos_d = pos0;
+    dpos_d.setZero();
+    ddpos_d.setZero();
+
+    // 期望位置函数
+    double alpha = 2 * M_PI / 5 * velRatio;
+    double radius = 0.16;
+    double deltaX = radius * (1 - std::cos(alpha * nowTime)) * posRatio;
+    double dDeltaX = -radius * alpha * std::sin(alpha * nowTime) * posRatio;
+    double ddDeltaX = -radius * alpha * alpha * std::cos(alpha * nowTime) * posRatio;
+    double deltaZ = radius * std::sin(alpha * nowTime) * posRatio;
+    double dDeltaZ = radius * alpha * std::cos(alpha * nowTime) * posRatio;
+    double ddDeltaZ = -radius * alpha * alpha * std::sin(alpha * nowTime) * posRatio;
+
+    // 误差计算
+    pos_error = pos_d - pos;
+    dpos_error = dpos_d - dpos;
+}

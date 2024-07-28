@@ -122,7 +122,7 @@ namespace franka_example_controllers
     paramForDebug = node_handle.advertise<franka_example_controllers::paramForDebug>("paramForDebug", 20);
 
     // 深度图
-    this->depthSub = image.subscribe("/camera/depth/image_rect_raw", 1, boost::bind(&NocontactImpedanceController::depthCameraCallback, this, _1));
+    this->depthSub = image.subscribe("/camera/depth/image_raw", 1, boost::bind(&NocontactImpedanceController::depthCameraCallback, this, _1));
     return true;
   }
 
@@ -176,6 +176,7 @@ namespace franka_example_controllers
     static Eigen::Matrix<double, 3, 1> ori_d, dori_d, ddori_d, ori_error, dori_error;
     static Eigen::Matrix<double, 3, 1> Ipos_error = Eigen::MatrixXd::Zero(3, 1);
     static Eigen::Matrix<double, 3, 1> Iori_error = Eigen::MatrixXd::Zero(3, 1);
+    // cartesianPosTrajectory0(time / 1000, 0.6, 0.5, this->pos0, this->pos, this->dpos, pos_d, dpos_d, ddpos_d, pos_error, dpos_error);
     cartesianPosTrajectoryX1(time / 1000, 0.6, 0.5, this->pos0, this->pos, this->dpos, pos_d, dpos_d, ddpos_d, pos_error, dpos_error);
     ddori_d = Eigen::MatrixXd::Zero(3, 1);
     if (this->ori0.coeffs().dot(this->ori.coeffs()) < 0.0)
@@ -185,12 +186,32 @@ namespace franka_example_controllers
     ori_error << this->T.rotation() * ori_error.tail(3);
     dori_error = -this->dX.tail(3);
 
-    // 命令加速度与输入力
-    this->xc1 = ddpos_d + this->Md_pos.inverse() * (this->Kd_pos * pos_error + this->Dd_pos * dpos_error);
-    this->F_c.head(3) = /* this->Lambda *  */ (this->xc1 /*  - this->dJ * this->dq */);
+    // VirtualForce
+    if (this->depthDistance_filter > this->VirtualRange)
+    {
+      this->VirtualError = 0;
+      this->VirtualdError = 0;
+      this->VirtualddError = 0;
+      this->VirtualError_old = 0;
+      this->VirtualdError_old = 0;
+    }
+    else
+    {
+      this->VirtualError = this->VirtualRange - this->depthDistance_filter;
+      this->VirtualdError = (this->VirtualError - this->VirtualError_old) / 0.001;
+      this->VirtualError_old = this->VirtualError;
+      this->VirtualddError = (this->VirtualdError - this->VirtualdError_old) / 0.001;
+      this->VirtualdError_old = this->VirtualdError;
+    }
+    this->VirtualForce = this->VirtualK * this->VirtualError + this->VirtualD * this->VirtualdError +
+                         this->VirtualM * this->VirtualddError;
 
-    this->xc2 = ddori_d + this->Md_ori.inverse() * (this->Kd_ori * ori_error + this->Dd_ori * dori_error);
-    this->F_c.tail(3) = /* this->Lambda *  */ (this->xc2 /*  - this->dJ * this->dq */);
+    // 命令加速度与输入力
+    this->xc1 = ddpos_d + /* this->Md_pos.inverse() * */ (this->Kd_pos * pos_error + this->Dd_pos * dpos_error);
+    this->F_c.head(3) = this->Lambda.block(0, 0, 3, 3) * (this->xc1 - (this->dJ * this->dq).head(3));
+    this->F_c[2] = this->F_c[2] + this->VirtualForce;
+    this->xc2 = ddori_d + /* this->Md_ori.inverse() *  */ (this->Kd_ori * ori_error + this->Dd_ori * dori_error);
+    this->F_c.tail(3) = /* this->Lambda.block(2, 2, 3, 3) * */ (this->xc2 /* - (this->dJ * this->dq).tail(3) */);
 
     this->tau_d = this->J.transpose() * this->F_c + this->N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq) + this->c;
     if (this->time == 0)
@@ -199,9 +220,6 @@ namespace franka_example_controllers
     // 记录数据
     this->time++;
     recordData();
-    // this->myfile << "ori_error: " << ori_error.transpose() << "\n";
-    // this->myfile << "F_c: " << this->F_c.transpose() << "\n";
-    // this->myfile << "xc2: " << this->xc2.transpose() << "\n";
 
     // 画图
     for (int i = 0; i < 3; i++)
@@ -218,6 +236,7 @@ namespace franka_example_controllers
       this->param_debug.tau_d[i] = this->tau_d[i];
       if (i == 6)
         break;
+      this->param_debug.F_c[i] = this->F_c[i];
       this->param_debug.F_ext0[i] = this->F_ext0[i];
       this->param_debug.F_extK[i] = this->F_extK[i];
     }
@@ -283,19 +302,17 @@ namespace franka_example_controllers
     }
     float effective_distance = 0;
     if (effective_pixel == 0)
-      effective_distance = 0.25; // m
+      effective_distance = 0.09; // m
     else
       effective_distance = distance_sum / effective_pixel;
     double filter_params = 0.5;
-    static float effective_distance_new = 0;
-    effective_distance_new = filter_params * effective_distance + (1.0 - filter_params) * effective_distance_new;
-    this->depthDistance = effective_distance_new;
+    this->depthDistance = effective_distance;
     // std::cout << "有效像素点：" << effective_pixel << std::endl; // 输出数据
-    std::cout << "目标距离：" << effective_distance_new << "m" << std::endl;
+    // std::cout << "目标距离：" << this->depthDistance << "m" << std::endl;
 
-    cv::rectangle(img, RectRange, cv::Scalar(255, 255, 255), 2, 8);
-    cv::imshow("深度图", this->img);
-    cv::waitKey(30);
+    // cv::rectangle(img, RectRange, cv::Scalar(255, 255, 255), 2, 8);
+    // cv::imshow("深度图", this->img);
+    // cv::waitKey(30);
   }
 
   void NocontactImpedanceController::upDateParam()
@@ -367,17 +384,23 @@ namespace franka_example_controllers
     if (this->time == 0)
     {
       this->Kd_pos = config.Cartesian_Kd_pos * Eigen::MatrixXd::Identity(3, 3);
-      this->Dd_pos = 2.0 * sqrt(config.Cartesian_Kd_pos) * Eigen::MatrixXd::Identity(3, 3);
+      this->Dd_pos = config.Cartesian_Dd_pos * Eigen::MatrixXd::Identity(3, 3);
       this->Kd_ori = config.Cartesian_Kd_ori * Eigen::MatrixXd::Identity(3, 3);
-      this->Dd_ori = 2.0 * sqrt(config.Cartesian_Kd_ori) * Eigen::MatrixXd::Identity(3, 3);
+      this->Dd_ori = config.Cartesian_Dd_ori * Eigen::MatrixXd::Identity(3, 3);
     }
     this->Kd_d_pos = config.Cartesian_Kd_pos * Eigen::MatrixXd::Identity(3, 3);
-    this->Dd_d_pos = 2.0 * sqrt(config.Cartesian_Kd_pos) * Eigen::MatrixXd::Identity(3, 3);
+    this->Dd_d_pos = config.Cartesian_Dd_pos * Eigen::MatrixXd::Identity(3, 3);
     this->Kd_d_ori = config.Cartesian_Kd_ori * Eigen::MatrixXd::Identity(3, 3);
-    this->Dd_d_ori = 2.0 * sqrt(config.Cartesian_Kd_ori) * Eigen::MatrixXd::Identity(3, 3);
+    this->Dd_d_ori = config.Cartesian_Dd_ori * Eigen::MatrixXd::Identity(3, 3);
 
     this->task2_K = config.Joint_Kd * Eigen::MatrixXd::Identity(7, 7);
-    this->task2_D = 2.0 * sqrt(config.Joint_Kd) * Eigen::MatrixXd::Identity(7, 7);
+    this->task2_D = config.Joint_Kd * Eigen::MatrixXd::Identity(7, 7);
+
+    this->VirtualK = config.VirtualK;
+    this->VirtualD = config.VirtualD;
+    this->VirtualM = config.VirtualM;
+    
+    this->Kd_pos(2, 2) = config.ZK;
   }
 
   void NocontactImpedanceController::controllerParamRenew()
@@ -389,6 +412,8 @@ namespace franka_example_controllers
     this->Kd_ori = filter_params * this->Kd_d_ori + (1.0 - filter_params) * this->Kd_ori;
     this->Dd_ori = filter_params * this->Dd_d_ori + (1.0 - filter_params) * this->Dd_ori;
     this->Md_ori = filter_params * this->Md_d_ori + (1.0 - filter_params) * this->Md_ori;
+
+    this->depthDistance_filter = filter_params * this->depthDistance + (1.0 - filter_params) * this->depthDistance_filter;
   }
 } // namespace franka_example_controllers
 

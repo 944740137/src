@@ -1,4 +1,5 @@
 float64[7] tau_d
+float64[7] tau_d_fli
 float64[7] tau_J
 #
 float64[7] q
@@ -24,9 +25,9 @@ float64[3] ori_error
 
 float64[6] F_ext0
 float64[6] F_extK
-
+float64[6] F_c
 float64 depthDistance
 float64 VirtualForce
 
-# float64[7] D
+float64[7] D
 # float64[3] K

@@ -5,6 +5,7 @@
 #include <franka_example_controllers/joint_impedance_controller.h>
 
 #include <math.h>
+#include <cmath>
 #include <memory>
 
 #include <controller_interface/controller_base.h>
@@ -196,42 +197,54 @@ namespace franka_example_controllers
     static Eigen::Matrix<double, 7, 1> tmp2;
 
     // ****************************************************新阻抗***************************************************
-    // for (int i = 0; i < 7; i++)
-    // {
-    //   tmp1[i] = dqerror[i] * std::fabs(dqerror[i]);
-    //   tmp2[i] = sgn(qerror[i] + (tmp1[i]) / (2 * r[i]));
-    //   this->qc[i] = ddq_d[i] + this->r[i] * tmp2[i];
-    // }
-    // this->tau_d << this->M * (this->qc) + this->c;
-    // if (this->time == 0)
-    //   std::cout << "新阻抗" << std::endl;
+    for (int i = 0; i < 7; i++)
+    {
+      tmp1[i] = dqerror[i] * std::fabs(dqerror[i]);
+      tmp2[i] = sgn(qerror[i] + (tmp1[i]) / (2 * r[i]));
+      this->qc[i] = ddq_d[i] + this->r[i] * tmp2[i];
+    }
+    this->tau_d << this->M * (this->qc) + this->c;
+    if (this->time == 0)
+      std::cout << "新阻抗" << std::endl;
     // ************************************************************************************************************
 
     // ****************************************************老阻抗***************************************************
-    // this->tau_d << this->M * (ddq_d + this->Md.inverse() * (/* this->Kd * qerror + */ this->Dd * dqerror)) + this->c;
+    // this->tau_d << this->M * (ddq_d + this->Md.inverse() * (this->Kd * qerror + this->Dd * dqerror)) + this->c;
     // if (this->time == 0)
     //   std::cout << "老阻抗" << std::endl;
     // *************************************************************************************************************
 
     // ****************************************************变阻尼阻抗*************************************************
-    double bar = 0.6;
-    double rd = 2;
-    static Eigen::Matrix<double, 7, 7> Dv = Eigen::MatrixXd::Zero(7, 7);
-    static Eigen::Matrix<double, 7, 1> fen_mu = Eigen::MatrixXd::Zero(7, 1);
+    // double bar = 0.6;
+    // double rd = 2;
+    // static Eigen::Matrix<double, 7, 7> Dv = Eigen::MatrixXd::Zero(7, 7);
+    // static Eigen::Matrix<double, 7, 1> fen_mu = Eigen::MatrixXd::Zero(7, 1);
+    // for (int i = 0; i < 7; i++)
+    // {
+    //   fen_mu[i] = (bar * bar - dqerror[i] * dqerror[i]);
+    //   Dv(i, i) = rd / fen_mu[i];
+    // }
+    // this->tau_d << this->M * (ddq_d + this->Md.inverse() * (/* this->Kd * qerror +  */ (this->Dd + Dv) * dqerror)) + this->c;
+    // if (this->time == 0)
+    //   std::cout << "变阻尼阻抗" << std::endl;
+    // *************************************************************************************************************
+
+    // ****************************************************非线性阻抗*************************************************
+    int n = 3 - 1;
+    double u = 400;
     for (int i = 0; i < 7; i++)
     {
-      fen_mu[i] = (bar * bar - dqerror[i] * dqerror[i]);
-      Dv(i, i) = rd / fen_mu[i];
+      this->Du(i, i) = u * pow(std::fabs(this->dq[i]), n);
     }
-    this->tau_d << this->M * (ddq_d + this->Md.inverse() * (/* this->Kd * qerror +  */(this->Dd + Dv) * dqerror)) + this->c;
+    this->tau_d << this->M * (ddq_d + this->Md.inverse() * (/* this->Kd * qerror + */ this->Du * dqerror)) + this->c;
     if (this->time == 0)
-      std::cout << "变阻尼阻抗" << std::endl;
-    // *************************************************************************************************************
+      std::cout << "非线性阻抗" << std::endl;
 
     // 记录数据
     this->time++;
-    // recordData();
-    // this->myfile << "Dv: " << Dv(1, 1) << "\n";
+    recordData();
+    // this->myfile << "Du: " << "\n";
+    // this->myfile << Du << "\n";
     // this->myfile << "dqerror: " << dqerror.transpose() << "\n";
     // this->myfile << "fen_mu: " << fen_mu[1] << "\n";
     // this->myfile << "tau_d: " << tau_d.transpose() << "\n";
@@ -243,7 +256,7 @@ namespace franka_example_controllers
     // 画图
     for (int i = 0; i < 7; i++)
     {
-      // this->param_debug.tau_d[i] = this->tau_d[i];
+      this->param_debug.tau_d[i] = this->tau_d[i];
       // this->param_debug.tau_J[i] = this->tau_J[i];
       // this->param_debug.tau_J_d[i] = this->tau_J_d[i];
       this->param_debug.q[i] = this->q[i];
@@ -253,7 +266,7 @@ namespace franka_example_controllers
       this->param_debug.qError[i] = qerror[i];
       this->param_debug.dqError[i] = dqerror[i];
       // this->param_debug.fen_mu[i] = fen_mu[i];
-      // this->param_debug.D[i] = (this->Dd + Dv)(i, i);
+      this->param_debug.D[i] = this->Du(i, i);
     }
 
     // // 平滑命令
@@ -263,6 +276,10 @@ namespace franka_example_controllers
       joint_handles_[i].setCommand(this->tau_d(i)); // 关节句柄设置力矩命令
     }
     this->paramForDebug.publish(this->param_debug);
+    for (int i = 0; i < 7; i++)
+    {
+      this->param_debug.tau_d_fli[i] = this->tau_d[i];
+    }
     // 目标位置，控制参数更新
     controllerParamRenew();
   }
@@ -309,8 +326,8 @@ namespace franka_example_controllers
 
   void JointImpedanceController::recordData()
   {
-    this->myfile << "time: " << this->time << "_\n";
-    // this->myfile << "comRatio: " << this->comRatio << "_\n";
+    // this->myfile << "time: " << this->time << "_\n";
+    this->myfile << "comRatio: " << this->comRatio << "_\n";
     // this->myfile << "J_pin1: \n";
     // this->myfile << this->J_pin1 << "\n";
     // this->myfile << "tau_msr: " << this->tau_msr.transpose() << "\n";

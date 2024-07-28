@@ -110,6 +110,7 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> qc = Eigen::MatrixXd::Identity(7, 1);
     Eigen::Matrix<double, 7, 7> Md = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> Dd = Eigen::MatrixXd::Identity(7, 7);
+    Eigen::Matrix<double, 7, 7> Du = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> Dv = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> Kd = Eigen::MatrixXd::Identity(7, 7);
 

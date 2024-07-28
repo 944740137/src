@@ -45,7 +45,7 @@ namespace franka_example_controllers
     /********************************************franka********************************************/
     // 命令力矩平滑和滤波
     const double delta_tau_max{1.0}; // 最大力矩变化值
-    double filter_params{0.001};     // 滤波参数，调整目标位置与阻抗变化速率
+    double filter_params{0.01};     // 滤波参数，调整目标位置与阻抗变化速率
     Eigen::Matrix<double, 7, 1> saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d);
     // 硬件交互
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_; // 机器人全部状态
@@ -60,8 +60,17 @@ namespace franka_example_controllers
     cv::Size range = cv::Size(20, 20);
     cv_bridge::CvImagePtr depth_ptr;
     double depthDistance = 0.5;
-    double VirtualRange = 0.45;
+    double depthDistance_filter = 0.5;
+    double VirtualRange = 0.40;
     double VirtualForce = 0;
+    double VirtualError = 0;
+    double VirtualdError = 0;
+    double VirtualddError = 0;
+    double VirtualError_old = 0;
+    double VirtualdError_old = 0;
+    double VirtualK = 20;
+    double VirtualD = 0.001;
+    double VirtualM = 0.000001;
 
     // 记录和时刻
     // bool firstUpdate = true; // 用于判断是不是第一个控制周期，计算雅可比导数。

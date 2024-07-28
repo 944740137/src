@@ -44,3 +44,7 @@ void cartesianPosTrajectoryX1(double nowTime, double posRatio, double velRatio,
                               const Eigen::Matrix<double, 3, 1> &pos0, const Eigen::Matrix<double, 3, 1> &pos, const Eigen::Matrix<double, 3, 1> &dpos,
                               Eigen::Matrix<double, 3, 1> &pos_d, Eigen::Matrix<double, 3, 1> &dpos_d, Eigen::Matrix<double, 3, 1> &ddpos_d,
                               Eigen::Matrix<double, 3, 1> &pos_error, Eigen::Matrix<double, 3, 1> &dpos_error);
+void cartesianPosTrajectory0(double nowTime, double posRatio, double velRatio,
+                              const Eigen::Matrix<double, 3, 1> &pos0, const Eigen::Matrix<double, 3, 1> &pos, const Eigen::Matrix<double, 3, 1> &dpos,
+                              Eigen::Matrix<double, 3, 1> &pos_d, Eigen::Matrix<double, 3, 1> &dpos_d, Eigen::Matrix<double, 3, 1> &ddpos_d,
+                              Eigen::Matrix<double, 3, 1> &pos_error, Eigen::Matrix<double, 3, 1> &dpos_error);
