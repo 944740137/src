@@ -34,4 +34,14 @@
           NocontactImpedanceController 非接触阻抗
     </description>
   </class>
+    <class name="franka_example_controllers/AdmittanceController" type="franka_example_controllers::AdmittanceController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          AdmittanceController 导纳控制
+    </description>
+  </class>
+  <class name="franka_example_controllers/AdmittanceDYNController" type="franka_example_controllers::AdmittanceDYNController" base_class_type="controller_interface::ControllerBase">
+    <description>
+          AdmittanceDYNController 导纳动力学控制
+    </description>
+  </class>
 </library>

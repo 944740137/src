@@ -256,17 +256,17 @@ namespace franka_example_controllers
     // 画图
     for (int i = 0; i < 7; i++)
     {
-      this->param_debug.tau_d[i] = this->tau_d[i];
+      // this->param_debug.tau_d[i] = this->tau_d[i];
       // this->param_debug.tau_J[i] = this->tau_J[i];
       // this->param_debug.tau_J_d[i] = this->tau_J_d[i];
-      this->param_debug.q[i] = this->q[i];
-      this->param_debug.q_d[i] = q_d[i];
-      this->param_debug.dq[i] = this->dq[i];
-      this->param_debug.dq_d[i] = dq_d[i];
-      this->param_debug.qError[i] = qerror[i];
-      this->param_debug.dqError[i] = dqerror[i];
+      // this->param_debug.q[i] = this->q[i];
+      // this->param_debug.q_d[i] = q_d[i];
+      // this->param_debug.dq[i] = this->dq[i];
+      // this->param_debug.dq_d[i] = dq_d[i];
+      // this->param_debug.qError[i] = qerror[i];
+      // this->param_debug.dqError[i] = dqerror[i];
       // this->param_debug.fen_mu[i] = fen_mu[i];
-      this->param_debug.D[i] = this->Du(i, i);
+      // this->param_debug.D[i] = this->Du(i, i);
     }
 
     // // 平滑命令
@@ -278,7 +278,7 @@ namespace franka_example_controllers
     this->paramForDebug.publish(this->param_debug);
     for (int i = 0; i < 7; i++)
     {
-      this->param_debug.tau_d_fli[i] = this->tau_d[i];
+      // this->param_debug.tau_d_fli[i] = this->tau_d[i];
     }
     // 目标位置，控制参数更新
     controllerParamRenew();

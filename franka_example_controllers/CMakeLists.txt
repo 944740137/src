@@ -53,6 +53,7 @@ generate_messages()
 
 #动态参数生成器,调用动态参数生成
 generate_dynamic_reconfigure_options(
+  cfg/admittance_controller.cfg
   cfg/nullspace_impedance_controller.cfg
   cfg/impedance_controller.cfg
   cfg/robust_controller.cfg
@@ -85,9 +86,17 @@ catkin_package(
     image_transport
   DEPENDS Franka
 )
+set(THIRD_PARTY_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/linux_x64)
+set(THIRD_PARTY_LIB ${THIRD_PARTY_LIB_DIR}/libhps_ftc.so)
+
+message("+++++++++++++++++")
+message(STATUS "THIRD_PARTY_LIB: ${THIRD_PARTY_LIB}")
+# message(${CMAKE_CURRENT_SOURCE_DIR})
 
 #生成库
 add_library(franka_example_controllers
+  src/admittance_controller/admittance_controller.cpp
+  src/admittance_controller/admittance_dyn_controller.cpp
   src/nullSpace_impedance/nullspace_impedance_controller.cpp
   src/nullSpace_impedance/nullspace_impedance_EBobserver_controller.cpp
   src/nullSpace_impedance/nullspace_impedance_MBobserver_controller.cpp
@@ -97,6 +106,7 @@ add_library(franka_example_controllers
   src/nocontact_impedance/nocontact_impedance_controller.cpp
   src/trajectory.cpp
   src/pinocchino_interactive.cpp
+  src/hps_sensor.cpp
 )
 
 #定义目标文件（franka_example_controllers）依赖其他的目标文件，确保其他目标已被构建
@@ -107,12 +117,15 @@ add_dependencies(franka_example_controllers
   ${PROJECT_NAME}_gencpp
   ${PROJECT_NAME}_gencfg
 )
+
 #将目标文件（franka_example_controllers）与库文件进行链接
 target_link_libraries(franka_example_controllers PUBLIC
   ${Franka_LIBRARIES}
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
   pinocchio::pinocchio
+  pthread 
+  ${THIRD_PARTY_LIB}
 )
 # 添加头文件地址
 target_include_directories(franka_example_controllers SYSTEM PUBLIC

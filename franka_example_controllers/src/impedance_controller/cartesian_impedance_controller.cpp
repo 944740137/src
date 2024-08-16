@@ -241,19 +241,19 @@ namespace franka_example_controllers
     // 画图
     for (int i = 0; i < 7; i++)
     {
-      this->param_debug.tau_d[i] = this->tau_d[i];
-      if (i == 6)
-        break;
-      this->param_debug.X[i] = this->X[i];
-      this->param_debug.X_d[i] = X_d[i];
-      this->param_debug.dX[i] = this->dX[i];
-      this->param_debug.dX_d[i] = dX_d[i];
-      this->param_debug.Xerror[i] = Xerror[i];
-      this->param_debug.dXerror[i] = dXerror[i];
-      this->param_debug.F_ext0[i] = this->F_ext0[i];
-      this->param_debug.F_extK[i] = this->F_extK[i];
-      if (i == 3)
-        break;
+      // this->param_debug.tau_d[i] = this->tau_d[i];
+      // if (i == 6)
+      //   break;
+      // this->param_debug.X[i] = this->X[i];
+      // this->param_debug.X_d[i] = X_d[i];
+      // this->param_debug.dX[i] = this->dX[i];
+      // this->param_debug.dX_d[i] = dX_d[i];
+      // this->param_debug.Xerror[i] = Xerror[i];
+      // this->param_debug.dXerror[i] = dXerror[i];
+      // this->param_debug.F_ext0[i] = this->F_ext0[i];
+      // this->param_debug.F_extK[i] = this->F_extK[i];
+      // if (i == 3)
+      //   break;
       // this->param_debug.K[i] = (this->Kd + Kv)(i, i);
     }
 
