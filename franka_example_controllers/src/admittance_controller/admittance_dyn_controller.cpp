@@ -220,17 +220,26 @@ namespace franka_example_controllers
       this->ft_new[2] = -this->ft_new[2];
     }
     // 死区
-    // for (int i = 0; i < 6; i++)
-    // {
-    //   if (std::fabs(this->ft_new[i]) < 0.4)
-    //     this->ft_new[i] = 0;
-    // }
-    // BF-VIC
+    for (int i = 0; i < 6; i++)
+    {
+      if (std::fabs(this->ft_new[i]) < 0.4)
+        this->ft_new[i] = 0;
+    }
 
+    // 恒定导纳
+    this->Kt = Eigen::MatrixXd::Zero(3, 3);
+    this->Dt = Eigen::MatrixXd::Zero(3, 3);
+    if (this->time == 0)
+      std::cout << "恒定导纳" << std::endl;
+    // BF-VIC
+    // if (this->time == 0)
+    //   std::cout << "BF-VIC" << std::endl;
     // 非线性导纳
+    // if (this->time == 0)
+    //   std::cout << "非线性导纳" << std::endl;
 
     this->ft_fil = ft_new;
-    this->ddpos_a = -Md.inverse() * (-this->ft_fil.block(0, 0, 3, 1) - this->Kd * (pos_d - this->pos_a) - this->Dd * (dpos_d - this->dpos_a)) + ddpos_d;
+    this->ddpos_a = -Md.inverse() * (-this->ft_fil.block(0, 0, 3, 1) - (this->Kd + this->Kt) * (pos_d - this->pos_a) - (this->Dd + this->Dt) * (dpos_d - this->dpos_a)) + ddpos_d;
     this->dpos_a = this->dpos_a + this->ddpos_a * 0.001;
     this->pos_a = this->pos_a + this->dpos_a * 0.001;
     static Eigen::Matrix<double, 3, 1> pos_ACerror, dpos_ACerror, Ipos_ACerror;
@@ -242,15 +251,26 @@ namespace franka_example_controllers
     Ipos_ACerror = Ipos_ACerror + 0.5 * (pos_ACerror + pos_ACerror_old) * t.toSec();
     pos_ACerror_old = pos_ACerror;
 
-    // 命令加速度与输入力
-    this->xc1 = ddpos_d + (this->Kp_pos * pos_ACerror + this->Ki_pos * Ipos_ACerror + this->Kv_pos * dpos_ACerror);
-    this->F_c.head(3) = this->Lambda.block(0, 0, 3, 3) * (this->xc1 - (this->dJ * this->dq).head(3));
-    this->xc2 = ddori_d + (this->Kp_ori * ori_error + this->Ki_ori * Iori_error + this->Kv_ori * dori_error);
-    this->F_c.tail(3) = this->Lambda.block(2, 2, 3, 3) * (this->xc2 - (this->dJ * this->dq).tail(3));
+    // 位置位姿
+    // this->xc1 = ddpos_d + (this->Kp_pos * pos_ACerror + this->Ki_pos * Ipos_ACerror + this->Kv_pos * dpos_ACerror);
+    // this->F_c.head(3) = this->Lambda.block(0, 0, 3, 3) * (this->xc1 - (this->dJ * this->dq).head(3));
+    // this->xc2 = ddori_d + (this->Kp_ori * ori_error + this->Ki_ori * Iori_error + this->Kv_ori * dori_error);
+    // this->F_c.tail(3) = this->Lambda.block(2, 2, 3, 3) * (this->xc2 - (this->dJ * this->dq).tail(3));
+    // this->tau_d = this->J.transpose() * this->F_c + this->N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq) + this->c;
+    // if (this->time == 0)
+    //   std::cout << "导纳动力学控制 主任务自由度 6" << std::endl;
 
-    this->tau_d = this->J.transpose() * this->F_c + this->N * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq) + this->c;
+    // 位置
+    // 伪逆矩阵计算
+    static Eigen::MatrixXd J_pos_inv;
+    Eigen::MatrixXd I = Eigen::MatrixXd::Identity(7, 7);
+    weightedPseudoInverse(J_pos, J_pos_inv, this->M);
+    Eigen::MatrixXd N_pos = I - J_pos_inv * J_pos;
+    this->xc1 = ddpos_d + (this->Kp_pos * pos_ACerror + this->Ki_pos * Ipos_ACerror + this->Kv_pos * dpos_ACerror);
+    this->qc = N_pos * (this->task2_K * (task2_q_d - this->q) + this->task2_D * -this->dq);
+    this->tau_d << this->M * (J_inv.block(0, 0, 7, 3) * (this->xc1 - (this->dJ * this->dq).head(3)) + this->qc) + this->c;
     if (this->time == 0)
-      std::cout << "导纳动力学控制" << std::endl;
+      std::cout << "导纳动力学控制 主任务自由度 3" << std::endl;
 
     // 记录数据
     this->time++;
@@ -336,9 +356,10 @@ namespace franka_example_controllers
     this->F_extK = Eigen::Map<Eigen::Matrix<double, 6, 1>>(robot_state.K_F_ext_hat_K.data());
 
     this->comRatio = robot_state.control_command_success_rate;
-
+    this->J_pos = this->J.block(0, 0, 3, 7);
     weightedPseudoInverse2<6, 7>(this->J, this->M, this->J_inv, this->Lambda);
     this->N = this->I - this->J.transpose() * this->J_inv.transpose();
+
     //
     pPandaDynLibManager->upDataModel(this->q);
     pPandaDynLibManager->computeKinData(this->J_pin, this->dJ_pin, this->q, this->dq);
@@ -401,6 +422,9 @@ namespace franka_example_controllers
     this->Kd_d = config.AC_Kd * Eigen::MatrixXd::Identity(3, 3);
     this->Dd_d = config.AC_Dd * Eigen::MatrixXd::Identity(3, 3);
     this->Md_d = config.AC_Md * Eigen::MatrixXd::Identity(3, 3);
+
+    this->task2_K = config.Kp_ns * Eigen::MatrixXd::Identity(3, 3);
+    this->task2_D = config.Kv_ns * Eigen::MatrixXd::Identity(3, 3);
   }
 
   void AdmittanceDYNController::controllerParamRenew()

@@ -94,15 +94,19 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> c = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> G = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 6, 7> J = Eigen::MatrixXd::Zero(6, 7);
+    Eigen::Matrix<double, 3, 7> J_pos = Eigen::MatrixXd::Zero(3, 7);
     Eigen::Matrix<double, 7, 7> M_pin = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> C_pin = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 1> G_pin = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 6, 7> J_pin = Eigen::MatrixXd::Zero(6, 7);
     // 逆和投影
     Eigen::Matrix<double, 7, 6> J_inv = Eigen::MatrixXd::Zero(7, 6);
-    Eigen::Matrix<double, 7, 7> N = Eigen::MatrixXd::Zero(7, 6);
+    Eigen::Matrix<double, 7, 3> J_pos_inv = Eigen::MatrixXd::Zero(7, 3);
+    Eigen::Matrix<double, 7, 7> N = Eigen::MatrixXd::Zero(7, 7);
+    Eigen::Matrix<double, 7, 7> N_pos = Eigen::MatrixXd::Zero(7, 7);
     Eigen::Matrix<double, 7, 7> I = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 6, 6> Lambda = Eigen::MatrixXd::Identity(6, 6);
+    Eigen::Matrix<double, 3, 3> Lambda_pos = Eigen::MatrixXd::Identity(3, 3);
     // 计算雅克比导数
     Eigen::Matrix<double, 6, 7> dJ = Eigen::MatrixXd::Zero(6, 7);     // 未滤波
     Eigen::Matrix<double, 6, 7> dJ_pin = Eigen::MatrixXd::Zero(6, 7); // 未滤波
@@ -123,6 +127,9 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 6, 1> ft_fil = Eigen::MatrixXd::Zero(6, 1);
 
     // 导纳
+    Eigen::Matrix<double, 3, 3> Kt = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dt = Eigen::MatrixXd::Identity(3, 3);
+
     Eigen::Matrix<double, 3, 3> Md = Eigen::MatrixXd::Identity(3, 3);
     Eigen::Matrix<double, 3, 3> Dd = Eigen::MatrixXd::Identity(3, 3);
     Eigen::Matrix<double, 3, 3> Kd = Eigen::MatrixXd::Identity(3, 3);
