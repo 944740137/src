@@ -123,6 +123,12 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 6, 1> ft_fil = Eigen::MatrixXd::Zero(6, 1);
 
     // 导纳
+    Eigen::Matrix<double, 3, 3> Md = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dd = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Kd = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Md_d = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Dd_d = Eigen::MatrixXd::Identity(3, 3);
+    Eigen::Matrix<double, 3, 3> Kd_d = Eigen::MatrixXd::Identity(3, 3);
     Eigen::Matrix<double, 3, 1> pos_a = Eigen::MatrixXd::Zero(3, 1);
     Eigen::Matrix<double, 3, 1> dpos_a = Eigen::MatrixXd::Zero(3, 1);
     Eigen::Matrix<double, 3, 1> ddpos_a = Eigen::MatrixXd::Zero(3, 1);

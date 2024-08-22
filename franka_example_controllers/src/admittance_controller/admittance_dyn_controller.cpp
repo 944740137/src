@@ -160,7 +160,9 @@ namespace franka_example_controllers
       this->myfile << "编译时刻:" << __TIME__ << "\n";
       this->myfile << "导纳动力学控制" << std::endl;
     }
-
+    this->pos_a = this->pos0;
+    this->dpos_a = Eigen::MatrixXd::Zero(3, 1);
+    this->ddpos_a = Eigen::MatrixXd::Zero(3, 1);
     task2_K = 30 * task2_K;
   }
 
@@ -188,8 +190,8 @@ namespace franka_example_controllers
     static Eigen::Matrix<double, 3, 1> Ipos_error = Eigen::MatrixXd::Zero(3, 1);
     static Eigen::Matrix<double, 3, 1> Iori_error = Eigen::MatrixXd::Zero(3, 1);
     // pos
-    // cartesianPosTrajectory0(time / 1000, 0.6, 0.5, this->pos0, this->pos, this->dpos, pos_d, dpos_d, ddpos_d, pos_error, dpos_error);
-    cartesianPosTrajectoryX1(time / 1000, 0.2, 0.5, this->pos0, this->pos, this->dpos, pos_d, dpos_d, ddpos_d, pos_error, dpos_error);
+    cartesianPosTrajectory0(time / 1000, 0.6, 0.5, this->pos0, this->pos, this->dpos, pos_d, dpos_d, ddpos_d, pos_error, dpos_error);
+    // cartesianPosTrajectoryX1(time / 1000, 0.2, 0.5, this->pos0, this->pos, this->dpos, pos_d, dpos_d, ddpos_d, pos_error, dpos_error);
 
     // ori
     ddori_d = Eigen::MatrixXd::Zero(3, 1);
@@ -202,17 +204,47 @@ namespace franka_example_controllers
     Iori_error = Iori_error + 0.5 * (ori_error + ori_error_old) * t.toSec();
     ori_error_old = ori_error;
 
+    if (this->isConnect)
+    {
+      hps->get_ftData(this->ft);
+      for (int i = 0; i < 6; i++)
+      {
+        // if (this->ft[i] > 0.4)
+        this->ft_new[i] = this->ft[i]; // 换方向
+        //   else
+        //     this->ft_new[i] = 0;
+      }
+      // 变换力矢量的表示到基坐标系下
+      this->ft_new[0] = this->ft[0] * std::sqrt(2) / 2 - this->ft[1] * std::sqrt(2) / 2;
+      this->ft_new[1] = -(this->ft[0] * std::sqrt(2) / 2 + this->ft[1] * std::sqrt(2) / 2);
+      this->ft_new[2] = -this->ft_new[2];
+    }
+    // 死区
+    // for (int i = 0; i < 6; i++)
+    // {
+    //   if (std::fabs(this->ft_new[i]) < 0.4)
+    //     this->ft_new[i] = 0;
+    // }
+    // BF-VIC
+
+    // 非线性导纳
+
+    this->ft_fil = ft_new;
+    this->ddpos_a = -Md.inverse() * (-this->ft_fil.block(0, 0, 3, 1) - this->Kd * (pos_d - this->pos_a) - this->Dd * (dpos_d - this->dpos_a)) + ddpos_d;
+    this->dpos_a = this->dpos_a + this->ddpos_a * 0.001;
+    this->pos_a = this->pos_a + this->dpos_a * 0.001;
+    static Eigen::Matrix<double, 3, 1> pos_ACerror, dpos_ACerror, Ipos_ACerror;
+    static Eigen::Matrix<double, 3, 1> pos_ACerror_old = Eigen::MatrixXd::Zero(3, 1);
+
     // 导纳，得出xa，跟踪误差pos_error = xa-a
-    this->pos_a = pos_d;
-    this->dpos_a = dpos_d;
-    this->ddpos_a = ddpos_d;
-    static Eigen::Matrix<double, 3, 1> pos_ACerror, dpos_ACerror, ddpos_ACerror;
-    Ipos_error = Ipos_error + 0.5 * (pos_error + pos_error_old) * t.toSec();
-    pos_error_old = pos_error;
+    pos_ACerror = this->pos_a - this->pos;
+    dpos_ACerror = this->dpos_a - this->dpos;
+    Ipos_ACerror = Ipos_ACerror + 0.5 * (pos_ACerror + pos_ACerror_old) * t.toSec();
+    pos_ACerror_old = pos_ACerror;
 
     // 命令加速度与输入力
-    this->xc1 = ddpos_d + (this->Kp_pos * pos_error + this->Ki_pos * Ipos_error + this->Kv_pos * dpos_error);
-    this->F_c.head(3) = this->Lambda.block(0, 0, 3, 3) *  (this->xc1 - (this->dJ * this->dq).head(3));
+    this->xc1 = ddpos_d + (this->Kp_pos * pos_ACerror + this->Ki_pos * Ipos_ACerror + this->Kv_pos * dpos_ACerror);
+    this->F_c.head(3) = this->Lambda.block(0, 0, 3, 3) * (this->xc1 - (this->dJ * this->dq).head(3));
     this->xc2 = ddori_d + (this->Kp_ori * ori_error + this->Ki_ori * Iori_error + this->Kv_ori * dori_error);
     this->F_c.tail(3) = this->Lambda.block(2, 2, 3, 3) * (this->xc2 - (this->dJ * this->dq).tail(3));
 
@@ -223,6 +255,8 @@ namespace franka_example_controllers
     // 记录数据
     this->time++;
     recordData();
+    // this->myfile << "pos_d: " << pos_d.transpose() << "_\n";
+
     // 画图
     for (int i = 0; i < 3; i++)
     {
@@ -237,7 +271,11 @@ namespace franka_example_controllers
       this->param_debug.ori_error[i] = ori_error[i];
       this->param_debug.pos_ACerror[i] = pos_ACerror[i];
       this->param_debug.dpos_ACerror[i] = dpos_ACerror[i];
-      this->param_debug.ddpos_ACerror[i] = ddpos_ACerror[i];
+    }
+    for (int i = 0; i < 6; i++)
+    {
+      this->param_debug.F_sensor[i] = this->ft_new[i];
+      this->param_debug.F_sensor_fil[i] = this->ft_fil[i];
     }
     for (int i = 0; i < 7; i++)
     {
@@ -254,6 +292,10 @@ namespace franka_example_controllers
     }
 
     this->paramForDebug.publish(this->param_debug);
+
+    // 清零
+    for (int i = 0; i < 6; i++)
+      this->ft_new[i] = 0.0;
   }
 
   Eigen::Matrix<double, 7, 1> AdmittanceDYNController::saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d)
@@ -306,7 +348,8 @@ namespace franka_example_controllers
   void AdmittanceDYNController::recordData()
   {
     // this->myfile << "time: " << this->time << "_\n";
-    // this->myfile << "comRatio: " << this->comRatio << "_\n";
+    // this->myfile << "pos: " << this->pos.transpose() << "_\n";
+    // this->myfile << "pos_a: " << this->pos_a.transpose()<< "_\n";
     // this->myfile << "I: \n";
     // this->myfile << this->J * this->J_inv << "\n";
     // this->myfile << "N: \n";
@@ -342,6 +385,10 @@ namespace franka_example_controllers
       this->Kp_ori = config.Kp_ori * Eigen::MatrixXd::Identity(3, 3);
       this->Kv_ori = config.Kv_ori * Eigen::MatrixXd::Identity(3, 3);
       this->Ki_ori = config.Ki_ori * Eigen::MatrixXd::Identity(3, 3);
+
+      this->Kd = config.AC_Kd * Eigen::MatrixXd::Identity(3, 3);
+      this->Dd = config.AC_Dd * Eigen::MatrixXd::Identity(3, 3);
+      this->Md = config.AC_Md * Eigen::MatrixXd::Identity(3, 3);
     }
     this->Kp_pos_d = config.Kp_pos * Eigen::MatrixXd::Identity(3, 3);
     this->Kv_pos_d = config.Kv_pos * Eigen::MatrixXd::Identity(3, 3);
@@ -350,6 +397,10 @@ namespace franka_example_controllers
     this->Kp_ori_d = config.Kp_ori * Eigen::MatrixXd::Identity(3, 3);
     this->Kv_ori_d = config.Kv_ori * Eigen::MatrixXd::Identity(3, 3);
     this->Ki_ori_d = config.Ki_ori * Eigen::MatrixXd::Identity(3, 3);
+
+    this->Kd_d = config.AC_Kd * Eigen::MatrixXd::Identity(3, 3);
+    this->Dd_d = config.AC_Dd * Eigen::MatrixXd::Identity(3, 3);
+    this->Md_d = config.AC_Md * Eigen::MatrixXd::Identity(3, 3);
   }
 
   void AdmittanceDYNController::controllerParamRenew()
@@ -361,6 +412,10 @@ namespace franka_example_controllers
     this->Kp_ori = filter_params * this->Kp_ori_d + (1.0 - filter_params) * this->Kp_ori;
     this->Kv_ori = filter_params * this->Kv_ori_d + (1.0 - filter_params) * this->Kv_ori;
     this->Ki_ori = filter_params * this->Ki_pos_d + (1.0 - filter_params) * this->Ki_ori;
+
+    this->Kd = filter_params * this->Kd_d + (1.0 - filter_params) * this->Kd;
+    this->Dd = filter_params * this->Dd_d + (1.0 - filter_params) * this->Dd;
+    this->Md = filter_params * this->Md_d + (1.0 - filter_params) * this->Md;
   }
 } // namespace franka_example_controllers
 
