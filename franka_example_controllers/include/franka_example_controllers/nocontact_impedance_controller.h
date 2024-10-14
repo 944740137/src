@@ -17,7 +17,7 @@
 #include <Eigen/Dense>
 
 #include <franka_example_controllers/nocontact_impedance_paramConfig.h>
-#include <franka_example_controllers/paramForDebug.h>
+#include <franka_example_controllers/nocontactImpedanceMsg.h>
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 
@@ -45,7 +45,7 @@ namespace franka_example_controllers
     /********************************************franka********************************************/
     // 命令力矩平滑和滤波
     const double delta_tau_max{1.0}; // 最大力矩变化值
-    double filter_params{0.01};     // 滤波参数，调整目标位置与阻抗变化速率
+    double filter_params{0.05};      // 滤波参数，调整目标位置与阻抗变化速率
     Eigen::Matrix<double, 7, 1> saturateTorqueRate(const Eigen::Matrix<double, 7, 1> &tau_d_calculated, const Eigen::Matrix<double, 7, 1> &tau_J_d);
     // 硬件交互
     std::unique_ptr<franka_hw::FrankaStateHandle> state_handle_; // 机器人全部状态
@@ -59,18 +59,28 @@ namespace franka_example_controllers
     cv::Mat img;
     cv::Size range = cv::Size(20, 20);
     cv_bridge::CvImagePtr depth_ptr;
-    double depthDistance = 0.5;
-    double depthDistance_filter = 0.5;
-    double VirtualRange = 0.40;
+    double originDepthDistance = 0.5;
+    double contactDepthDistance = 0.5;
+    double filterDepthDistance = 0.5;
+    double dfilterDepthDistance = 0;
+    double filterDepthDistance_old = 0;
+    double Gp = 20;
     double VirtualForce = 0;
-    double VirtualError = 0;
-    double VirtualdError = 0;
-    double VirtualddError = 0;
-    double VirtualError_old = 0;
-    double VirtualdError_old = 0;
-    double VirtualK = 20;
-    double VirtualD = 0.001;
-    double VirtualM = 0.000001;
+    double filterVirtualForce = 0;
+    double VirtualRange = 0.35;
+    double pos_a = 0;
+    double dpos_a = 0;
+    double ddpos_a = 0;
+
+    double virtualAdmittance_K = 9;
+    double virtualAdmittance_D = 72;
+    double virtualAdmittance_M = 1;
+    bool newData = false;
+    bool isContact = false;
+
+    double Fd = 0;
+    double Pf = 1;
+    double If = 1;
 
     // 记录和时刻
     // bool firstUpdate = true; // 用于判断是不是第一个控制周期，计算雅可比导数。
@@ -85,7 +95,7 @@ namespace franka_example_controllers
 
     // 发布和记录数据
     ros::Publisher paramForDebug;
-    franka_example_controllers::paramForDebug param_debug;
+    franka_example_controllers::nocontactImpedanceMsg param_debug;
     void recordData();
 
     // 初始值
@@ -142,6 +152,8 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 6, 1> F_extK = Eigen::MatrixXd::Zero(6, 1);
 
     // 主任务
+
+    double pos_tar = 0;
     double r = 0.1;
     double r_d = 0.1;
     Eigen::Matrix<double, 7, 1> qc = Eigen::MatrixXd::Identity(7, 1);

@@ -17,7 +17,7 @@
 #include <Eigen/Dense>
 
 #include <franka_example_controllers/admittance_controller_paramConfig.h>
-#include <franka_example_controllers/paramForDebug.h>
+#include <franka_example_controllers/admittanceControllerMsg.h>
 #include <franka_hw/franka_model_interface.h>
 #include <franka_hw/franka_state_interface.h>
 
@@ -63,7 +63,7 @@ namespace franka_example_controllers
 
     // 发布和记录数据
     ros::Publisher paramForDebug;
-    franka_example_controllers::paramForDebug param_debug;
+    franka_example_controllers::admittanceControllerMsg param_debug;
     void recordData();
 
     // 初始值
@@ -162,6 +162,9 @@ namespace franka_example_controllers
     Eigen::Matrix<double, 7, 1> task2_q_d = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 7> task2_K = Eigen::MatrixXd::Identity(7, 7);
     Eigen::Matrix<double, 7, 7> task2_D = Eigen::MatrixXd::Identity(7, 7);
+
+    // BF
+    double rd = 1;
   };
 
 } // namespace franka_example_controllers

@@ -42,7 +42,7 @@ namespace franka_example_controllers
   private:
     // Saturation
     static constexpr double kDeltaTauMax{1.0};
-    std::array<double, 7> saturateTorqueRate(const std::array<double, 7> &tau_d_calculated,const std::array<double, 7> &tau_J_d); // NOLINT (readability-identifier-naming)
+    std::array<double, 7> saturateTorqueRate(const std::array<double, 7> &tau_d_calculated, const std::array<double, 7> &tau_J_d); // NOLINT (readability-identifier-naming)
 
     franka_hw::FrankaPoseCartesianInterface *cartesian_pose_interface_;
     std::unique_ptr<franka_hw::FrankaCartesianPoseHandle> cartesian_pose_handle_;
@@ -61,7 +61,7 @@ namespace franka_example_controllers
 
     ros::Duration elapsed_time_;
     std::array<double, 16> initial_pose_{};
-    
+
     Eigen::Matrix<double, 6, 7> J = Eigen::MatrixXd::Zero(6, 7);
     Eigen::Matrix<double, 7, 1> dq = Eigen::MatrixXd::Zero(7, 1);
     Eigen::Matrix<double, 7, 1> dq_d = Eigen::MatrixXd::Zero(7, 1);
@@ -82,8 +82,8 @@ namespace franka_example_controllers
     bool isConnect = false;
     double ft[6] = {0};
     double ft_filter[6] = {0};
-    double k_gains_[7] = {600.0,600.0,600.0,600.0,250.0,150.0,50.0};
-    double d_gains_[7] = {6.0,6.0,6.0,6.0,2.0,1.0,0.5};
+    double k_gains_[7] = {600.0, 600.0, 600.0, 600.0, 250.0, 150.0, 50.0};
+    double d_gains_[7] = {6.0, 6.0, 6.0, 6.0, 2.0, 1.0, 0.5};
     double filter = 0.1;
     Eigen::Matrix<double, 6, 1> ft_new = Eigen::MatrixXd::Zero(6, 1);
     Eigen::Matrix<double, 6, 1> ft_fil = Eigen::MatrixXd::Zero(6, 1);

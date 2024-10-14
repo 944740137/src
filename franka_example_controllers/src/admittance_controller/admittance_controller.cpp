@@ -239,20 +239,20 @@ namespace franka_example_controllers
     for (int i = 0; i < 7; i++)
     {
       // this->param_debug.tau_d[i] = this->tau_d[i];
-      this->param_debug.dq_d[i] = robot_state.dq_d[i];
-      this->param_debug.q_d[i] = robot_state.q_d[i];
+      // this->param_debug.dq_d[i] = robot_state.dq_d[i];
+      // this->param_debug.q_d[i] = robot_state.q_d[i];
     }
     for (int i = 0; i < 6; i++)
     {
-      this->param_debug.F_sensor[i] = this->ft_new[i];
-      this->param_debug.F_sensor_fil[i] = this->ft_fil[i];
+      // this->param_debug.F_sensor[i] = this->ft_new[i];
+      // this->param_debug.F_sensor_fil[i] = this->ft_fil[i];
     }
     for (int i = 0; i < 3; i++)
     {
-      this->param_debug.pos_d[i] = this->x_d[i];
-      this->param_debug.pos[i] = this->x_a[i];
-      this->param_debug.dpos[i] = this->dx_a[i];
-      this->param_debug.ddpos[i] = this->ddx_a[i];
+      // this->param_debug.pos_d[i] = this->x_d[i];
+      // this->param_debug.pos[i] = this->x_a[i];
+      // this->param_debug.dpos[i] = this->dx_a[i];
+      // this->param_debug.ddpos[i] = this->ddx_a[i];
     }
     this->paramForDebug.publish(this->param_debug);
 

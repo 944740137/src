@@ -126,7 +126,7 @@ namespace franka_example_controllers
     dynamic_server_compliance_param_->setCallback(boost::bind(&AdmittanceDYNController::complianceParamCallback, this, _1, _2));
 
     // 发布数据
-    paramForDebug = node_handle.advertise<franka_example_controllers::paramForDebug>("paramForDebug", 20);
+    paramForDebug = node_handle.advertise<franka_example_controllers::admittanceControllerMsg>("paramForDebug", 20);
 
     double ft[6] = {0};
     this->hps = new hps_sensor();
@@ -141,7 +141,7 @@ namespace franka_example_controllers
     std::cout << "[------------------] start2:NocontactImpedance\n";
     std::cout << "[------------------] 编译日期:" << __DATE__ << "\n";
     std::cout << "[------------------] 编译时刻:" << __TIME__ << "\n";
-    std::cout << "[------------------] 非接触阻抗" << std::endl;
+    std::cout << "[------------------] 导纳控制" << std::endl;
 
     // 获取机器人初始状态
     franka::RobotState initial_state = state_handle_->getRobotState();
@@ -163,7 +163,7 @@ namespace franka_example_controllers
     this->pos_a = this->pos0;
     this->dpos_a = Eigen::MatrixXd::Zero(3, 1);
     this->ddpos_a = Eigen::MatrixXd::Zero(3, 1);
-    task2_K = 30 * task2_K;
+    // task2_K = 30 * task2_K;
   }
 
   void AdmittanceDYNController::update(const ros::Time & /*time*/, const ros::Duration &t)
@@ -222,23 +222,48 @@ namespace franka_example_controllers
     // 死区
     for (int i = 0; i < 6; i++)
     {
-      if (std::fabs(this->ft_new[i]) < 0.4)
+      if (std::fabs(this->ft_new[i]) < 0.8)
         this->ft_new[i] = 0;
     }
-
+    double g = 1;
     // 恒定导纳
+    // this->Kd = Eigen::MatrixXd::Zero(3, 3);
     this->Kt = Eigen::MatrixXd::Zero(3, 3);
     this->Dt = Eigen::MatrixXd::Zero(3, 3);
     if (this->time == 0)
       std::cout << "恒定导纳" << std::endl;
+
     // BF-VIC
+    // this->Kd = Eigen::MatrixXd::Zero(3, 3);
+    // this->Kt = Eigen::MatrixXd::Zero(3, 3);
+    // this->Dt = Eigen::MatrixXd::Zero(3, 3);
+    // static double rd[3] = {1, 1, 1};
+    // static double bar[3] = {0.2, 0.2, 0.2};
+    // static double lam[3] = {0.20, 0.20, 0.20};
+    // for (int i = 0; i < 3; i++)
+    // {
+    //   double tmp = (bar[i] * bar[i] - (dpos_d - this->dpos_a)[i] * (dpos_d - this->dpos_a)[i]);
+    //   this->Kt(i, i) = lam[i] * this->rd / tmp;
+    //   this->Dt(i, i) = this->rd / tmp;
+    // }
     // if (this->time == 0)
     //   std::cout << "BF-VIC" << std::endl;
+
     // 非线性导纳
+    // g = 0.2;
+    // int n = 2 - 1;
+    // double u = 1400;
+    // this->Kt = Eigen::MatrixXd::Zero(3, 3);
+    // this->Kd = Eigen::MatrixXd::Zero(3, 3);
+    // this->Dd = Eigen::MatrixXd::Zero(3, 3);
+    // for (int i = 0; i < 3; i++)
+    // {
+    //   this->Dt(i, i) = u * pow(std::fabs(this->dpos_a[i]), n);
+    // }
     // if (this->time == 0)
     //   std::cout << "非线性导纳" << std::endl;
 
-    this->ft_fil = ft_new;
+    this->ft_fil = this->ft_new;
     this->ddpos_a = -Md.inverse() * (-this->ft_fil.block(0, 0, 3, 1) - (this->Kd + this->Kt) * (pos_d - this->pos_a) - (this->Dd + this->Dt) * (dpos_d - this->dpos_a)) + ddpos_d;
     this->dpos_a = this->dpos_a + this->ddpos_a * 0.001;
     this->pos_a = this->pos_a + this->dpos_a * 0.001;
@@ -252,7 +277,7 @@ namespace franka_example_controllers
     pos_ACerror_old = pos_ACerror;
 
     // 位置位姿
-    // this->xc1 = ddpos_d + (this->Kp_pos * pos_ACerror + this->Ki_pos * Ipos_ACerror + this->Kv_pos * dpos_ACerror);
+    // this->xc1 = ddpos_d + (/* this->Kp_pos * pos_ACerror + this->Ki_pos * Ipos_ACerror +  */ this->Kv_pos * dpos_ACerror);
     // this->F_c.head(3) = this->Lambda.block(0, 0, 3, 3) * (this->xc1 - (this->dJ * this->dq).head(3));
     // this->xc2 = ddori_d + (this->Kp_ori * ori_error + this->Ki_ori * Iori_error + this->Kv_ori * dori_error);
     // this->F_c.tail(3) = this->Lambda.block(2, 2, 3, 3) * (this->xc2 - (this->dJ * this->dq).tail(3));
@@ -284,22 +309,17 @@ namespace franka_example_controllers
       this->param_debug.dpos_a[i] = this->dpos_a[i];
       this->param_debug.ddpos_a[i] = this->ddpos_a[i];
       this->param_debug.pos[i] = this->pos[i];
+      this->param_debug.dpos[i] = this->dpos[i];
       this->param_debug.pos_d[i] = pos_d[i];
-      this->param_debug.ori[i] = this->ori.toRotationMatrix().eulerAngles(2, 1, 0)[i];
-      this->param_debug.ori_d[i] = this->ori0.toRotationMatrix().eulerAngles(2, 1, 0)[i];
-      this->param_debug.pos_error[i] = pos_error[i];
-      this->param_debug.ori_error[i] = ori_error[i];
-      this->param_debug.pos_ACerror[i] = pos_ACerror[i];
-      this->param_debug.dpos_ACerror[i] = dpos_ACerror[i];
+      this->param_debug.pos_track_error[i] = pos_ACerror[i];
+      this->param_debug.ori_track_error[i] = dpos_ACerror[i];
+      this->param_debug.K[i] = (this->Kd + this->Kt)(i, i);
+      this->param_debug.D[i] = (this->Dd + this->Dt)(i, i);
     }
     for (int i = 0; i < 6; i++)
     {
       this->param_debug.F_sensor[i] = this->ft_new[i];
       this->param_debug.F_sensor_fil[i] = this->ft_fil[i];
-    }
-    for (int i = 0; i < 7; i++)
-    {
-      this->param_debug.tau_d[i] = this->tau_d[i];
     }
     // 目标位置，控制参数更新
     controllerParamRenew();
@@ -425,6 +445,8 @@ namespace franka_example_controllers
 
     this->task2_K = config.Kp_ns * Eigen::MatrixXd::Identity(3, 3);
     this->task2_D = config.Kv_ns * Eigen::MatrixXd::Identity(3, 3);
+
+    this->rd = config.rd;
   }
 
   void AdmittanceDYNController::controllerParamRenew()

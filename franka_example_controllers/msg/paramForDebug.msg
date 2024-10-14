@@ -2,12 +2,12 @@ float64[7] tau_d
 # float64[7] tau_d_fli
 float64[7] tau_J
 #
-float64[7] q
-float64[7] dq
-float64[7] q_d
-float64[7] dq_d
-float64[7] qError
-float64[7] dqError
+# float64[7] q
+# float64[7] dq
+# float64[7] q_d
+# float64[7] dq_d
+# float64[7] qError
+# float64[7] dqError
 
 # float64[6] X
 # float64[6] dX
@@ -41,5 +41,5 @@ float64[6] F_c
 float64 depthDistance
 float64 VirtualForce
 
-# float64[7] D
-# float64[3] K
+float64[7] D
+float64[3] K

@@ -47,6 +47,8 @@ endif()
 add_message_files(FILES
   JointTorqueComparison.msg
   paramForDebug.msg
+  admittanceControllerMsg.msg
+  nocontactImpedanceMsg.msg
 )
 #调用消息生成
 generate_messages()

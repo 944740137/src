@@ -279,9 +279,9 @@ void cartesianPosTrajectoryX1(double nowTime, double posRatio, double velRatio,
     double ddDeltaZ = -radius * alpha * alpha * std::sin(alpha * nowTime) * posRatio;
 
     // 期望位置赋值
-    pos_d[0] = pos0[0] + deltaX;
-    dpos_d[0] = dDeltaX;
-    ddpos_d[0] = ddDeltaX;
+    pos_d[2] = pos0[2] + deltaX;
+    dpos_d[2] = dDeltaX;
+    ddpos_d[2] = ddDeltaX;
 
     // 误差计算
     pos_error = pos_d - pos;
